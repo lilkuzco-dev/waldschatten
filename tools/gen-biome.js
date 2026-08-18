@@ -46,11 +46,65 @@ const VEGETATION = [
 	"waldschatten:forest_floor_cobweb",
 	"waldschatten:scattered_cairn_stone",
 	"waldschatten:ashen_soil_patch",
+	// ---------------------------------------------------------------------------
+	// VANILLA FEATURES BELOW: their ORDER RELATIVE TO EACH OTHER IS NOT OURS TO CHOOSE.
+	//
+	// Minecraft demands one globally consistent ordering of every feature across every
+	// biome in a decoration step, and throws "Feature order cycle found" mid-chunk-gen if
+	// two biomes disagree. This list once put the mushrooms before patch_grass_forest while
+	// every vanilla forest puts grass first; the result was an IllegalStateException that
+	// crashed world generation on contact with old_growth_birch_forest.
+	//
+	// It cannot be caught in a single-biome test world, because a cycle needs two biomes to
+	// disagree — which is exactly why it survived the whole render battery. checkFeatureOrder
+	// below now proves it against every vanilla biome at generation time.
+	// ---------------------------------------------------------------------------
+	"minecraft:patch_grass_forest",
 	"minecraft:brown_mushroom_normal",
 	"minecraft:red_mushroom_normal",
-	"minecraft:patch_grass_forest",
 	"minecraft:patch_leaf_litter",
 ];
+
+/**
+ * The same check the game makes, made before the game gets a chance to.
+ *
+ * <p>Builds the "A comes before B" graph from every vanilla biome's decoration steps plus
+ * ours, and looks for a cycle. Reports the pair that disagrees, which the game's own error
+ * does not — it names the two biomes and leaves you to find the features yourself.
+ */
+function checkFeatureOrder(ourFeatures) {
+	const jar = execFileSync("unzip", ["-Z1", SERVER_JAR, "data/minecraft/worldgen/biome/*.json"], { maxBuffer: 1 << 26 })
+		.toString().trim().split("\n");
+
+	// step index -> Map(feature -> Set(features that must come after it))
+	const after = new Map();
+	const note = (step, list) => {
+		if (!after.has(step)) after.set(step, new Map());
+		const graph = after.get(step);
+		for (let i = 0; i < list.length; i++) {
+			if (!graph.has(list[i])) graph.set(list[i], new Set());
+			for (let j = i + 1; j < list.length; j++) graph.get(list[i]).add(list[j]);
+		}
+	};
+
+	for (const entry of jar) {
+		const biome = JSON.parse(execFileSync("unzip", ["-p", SERVER_JAR, entry], { maxBuffer: 1 << 24 }).toString());
+		(biome.features || []).forEach((list, step) => note(step, list));
+	}
+	ourFeatures.forEach((list, step) => note(step, list));
+
+	const problems = [];
+	for (const [step, graph] of after) {
+		for (const [a, laterThanA] of graph) {
+			for (const b of laterThanA) {
+				if (graph.get(b) && graph.get(b).has(a)) {
+					problems.push(`step ${step}: "${a}" and "${b}" are ordered both ways across biomes`);
+				}
+			}
+		}
+	}
+	return [...new Set(problems)];
+}
 
 /**
  * Hostiles run hot because the canopy keeps the floor dark at noon — that is the biome's
@@ -163,12 +217,20 @@ function main() {
 		temperature: 0.6,
 	};
 
+	const orderProblems = checkFeatureOrder(features);
+	if (orderProblems.length) {
+		console.error("FEATURE ORDER CYCLE — this would crash world generation:");
+		for (const p of orderProblems) console.error("  - " + p);
+		process.exit(1);
+	}
+
 	fs.mkdirSync(path.dirname(OUT), { recursive: true });
 	fs.writeFileSync(OUT, JSON.stringify(biome, null, 2) + "\n");
 	console.log(`wrote ${path.relative(path.join(__dirname, ".."), OUT)}`);
 	console.log(`  fog ${hex(p.fog)}  sky ${hex(p.sky)}  water ${hex(p.water)}`);
 	console.log(`  grass ${hex(p.grass)}  foliage ${hex(p.foliage)}`);
 	console.log(`  ${features.flat().length} features, ${SPAWNERS.monster.length} hostile entries`);
+	console.log("  feature order agrees with every vanilla biome (no cycle)");
 }
 
 main();

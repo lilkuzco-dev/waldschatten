@@ -2,11 +2,10 @@ package dev.lilkuzco.waldschatten.worldgen;
 
 import com.mojang.datafixers.util.Pair;
 import dev.lilkuzco.waldschatten.Waldschatten;
-import java.util.List;
-import java.util.function.Consumer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 
 /**
@@ -38,38 +37,56 @@ public final class WaldschattenWorldgen {
 			ResourceKey.create(Registries.BIOME, Waldschatten.id("waldschatten"));
 
 	// ---------------------------------------------------------------------------
-	// The climate niche.
+	// Claiming a slice, rather than asking nicely for one.
 	//
-	// Temperate and wet, which is dark forest's own band — Waldschatten is meant to be
-	// the wood next door to the dark forest, not a curiosity in some unrelated climate.
-	// It is separated from dark forest by erosion and weirdness rather than by climate:
-	// only the hilly, low-weirdness slice, which is also the terrain the brief asks for
-	// (rolling ground and root hollows rather than a flat forest floor).
+	// The first version of this appended a parameter point covering a narrow sub-box of
+	// dark forest's climate. It generated EXACTLY NOTHING — 0 of 4225 samples over eight
+	// thousand blocks square — and the multi-noise maths says it never could have:
 	//
-	// These are a starting point, not a measurement. Rarity is an empirical question and
-	// the honest way to answer it is to generate a world and count — see the
-	// "tuning the rarity" section of WALDSCHATTEN.md.
+	//   fitness = SUM over parameters of (distance from the sample to that range)^2
+	//
+	// `distance` is ZERO when the sample lies inside the range, and the search keeps the
+	// first point it finds with a strictly lower fitness. So a sub-box of dark forest's box
+	// scores exactly what dark forest scores — zero — for every sample it could ever want,
+	// ties, and loses the tie to the entry that was added first. Vanilla is always added
+	// first. A strict subset is unwinnable by construction, and no amount of narrowing the
+	// ranges helps, because you cannot beat zero with zero.
+	//
+	// (The old parameters were also simply in the wrong cell: dark forest lives at
+	// temperature index 2, span -0.15..0.2, and those parameters described index 3 — which
+	// is jungle's row of MIDDLE_BIOMES, not dark forest's.)
+	//
+	// So instead of competing with dark forest, Waldschatten TAKES a defined piece of it:
+	// every dark forest entry vanilla emits on the hilly erosion band becomes Waldschatten
+	// instead. That is a real, bounded, explainable slice — "the dark forest that grows on
+	// broken ground" — it inherits dark forest's whole climate envelope, and its frequency
+	// is a known fraction of a biome whose frequency is already known.
 	// ---------------------------------------------------------------------------
-	private static final Climate.Parameter TEMPERATURE = Climate.Parameter.span(0.2F, 0.55F);
-	private static final Climate.Parameter HUMIDITY = Climate.Parameter.span(0.3F, 1.0F);
-	private static final Climate.Parameter CONTINENTALNESS = Climate.Parameter.span(0.03F, 1.0F);
-	private static final Climate.Parameter EROSION = Climate.Parameter.span(-0.375F, -0.2225F);
-	private static final Climate.Parameter DEPTH = Climate.Parameter.point(0.0F);
-	private static final Climate.Parameter WEIRDNESS = Climate.Parameter.span(-0.15F, 0.15F);
+
+	/** Erosion band 2 (-0.375 .. -0.2225): vanilla's hilly, broken ground. */
+	private static final long HILLY_EROSION_MIN = Climate.quantizeCoord(-0.375F);
+
+	private static int claimed = 0;
+
+	/** Called at the head of each preset build, so the count is per-build not cumulative. */
+	public static void resetClaimCount() {
+		claimed = 0;
+	}
+
 	/**
-	 * Offset is a flat penalty on the distance to this point, so it is the rarity dial:
-	 * 0 means "win this niche outright", higher means "only when nothing else is close".
+	 * Called for every entry vanilla adds to the overworld preset, via the mixin.
+	 * Returns the entry unchanged, or the same climate point re-pointed at Waldschatten.
 	 */
-	private static final float OFFSET = 0.0F;
-
-	private static final List<Climate.ParameterPoint> POINTS = List.of(
-			Climate.parameters(TEMPERATURE, HUMIDITY, CONTINENTALNESS, EROSION, DEPTH, WEIRDNESS, OFFSET));
-
-	/** Called from the mixin at the tail of the vanilla overworld build. */
-	public static void addOverworldBiomes(Consumer<Pair<Climate.ParameterPoint, ResourceKey<Biome>>> consumer) {
-		for (Climate.ParameterPoint point : POINTS) {
-			consumer.accept(Pair.of(point, WALDSCHATTEN));
+	public static Pair<Climate.ParameterPoint, ResourceKey<Biome>> claim(
+			Pair<Climate.ParameterPoint, ResourceKey<Biome>> entry) {
+		if (!Biomes.DARK_FOREST.equals(entry.getSecond())) {
+			return entry;
 		}
+		if (entry.getFirst().erosion().min() != HILLY_EROSION_MIN) {
+			return entry;
+		}
+		claimed++;
+		return Pair.of(entry.getFirst(), WALDSCHATTEN);
 	}
 
 	public static void register() {
@@ -78,10 +95,22 @@ public final class WaldschattenWorldgen {
 
 	private static void logPlacement() {
 		Waldschatten.LOGGER.info(
-				"Waldschatten claims {} multi-noise point(s) in the VANILLA overworld preset. "
+				"Waldschatten will claim vanilla dark-forest points on the hilly erosion band. "
 						+ "A world whose biome source is replaced (Terralith, Terrablender, a custom "
-						+ "dimension) will not contain the biome — that is expected, not a bug.",
-				POINTS.size());
+						+ "dimension) never builds that preset and will not contain the biome — that "
+						+ "is expected, not a bug.");
+	}
+
+	/**
+	 * Reports what was actually taken, from the tail of the preset build.
+	 *
+	 * <p>Logged there and not at mod init because the preset is built lazily, long after
+	 * {@code onInitialize} — an init-time log of this counter prints 0 every single time and
+	 * reads exactly like a broken injection.
+	 */
+	public static void logClaimed() {
+		Waldschatten.LOGGER.info("Waldschatten claimed {} dark-forest climate point(s) from the "
+				+ "vanilla overworld preset.", claimed);
 	}
 
 	private WaldschattenWorldgen() {

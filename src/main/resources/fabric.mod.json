@@ -20,7 +20,8 @@
 			"dev.lilkuzco.waldschatten.client.WaldschattenClient"
 		],
 		"fabric-client-gametest": [
-			"dev.lilkuzco.waldschatten.client.WaldschattenRenderTest"
+			"dev.lilkuzco.waldschatten.client.WaldschattenRenderTest",
+			"dev.lilkuzco.waldschatten.client.WaldschattenWorldSurvey"
 		]
 	},
 	"mixins": [

@@ -105,11 +105,13 @@ The battery also asserts six things a screenshot cannot:
   the thing under test, so this may not be assumed. It has caught a whole run of
   vanilla-green frames more than once.
 - **`WALDSCHATTEN_LIGHT`** — sweeps 225 floor positions under a closed canopy at noon and
-  reports the distribution. Trees are placed randomly, so the figure moves between runs:
-  observed **15–35% of the floor at light 0**, mean sky light 3.6–6.8, with min 0 every time.
-  That is the "danger in daylight" beat, measured rather than claimed — and the spread is
-  itself the answer to "how dense should the canopy be", which is now a question with a
-  number attached instead of a vibe.
+  reports the distribution. **The figure is noisy and should be read as directional, not as a
+  spec**: the test stand is only ~80 trees and the tree feature is random, so observed values
+  range from **4% to 35% of the floor at light 0** (mean sky light 3.6–8.0), with a minimum of
+  0 every single time. So the "danger in daylight" beat is real — there is always fully dark
+  floor under a closed canopy — but *how much* of it varies more than one run can tell you. A
+  trustworthy number needs a wider stand and several seeds; the honest summary today is
+  "somewhere between a little and a third of it".
 
 `node tools/contact-sheet.js` composites every texture scaled up on a checkerboard so the
 placeholders can be judged as art and their alpha seen rather than guessed at.
@@ -124,7 +126,8 @@ tools/                       generators — EDIT THESE, never their output (rule
   png.js                     dependency-free PNG encode/decode, dimension-agnostic
   nbt.js                     NBT writer, copied from warfront (fixes go there and re-copy)
   structure-lib.js           the template builder used by gen-structures
-  gen-biome.js               biome JSON: colours from palette, ore/carver steps from vanilla
+  gen-biome.js               biome JSON: colours from palette, ore/carver steps from vanilla,
+                             and refuses to write a feature order that would cycle
   gen-textures.js            16 placeholder block textures
   gen-assets.js              blockstates, models, item defs, loot tables, en_us
   gen-worldgen.js            configured + placed features, and cross-checks them
@@ -164,42 +167,55 @@ referenced, or if a template pool names an NBT file that is not there. The first
 
 ## Where the biome actually generates
 
-Fabric API has **no overworld biome placement API** — only `NetherBiomes` and
-`TheEndBiomes` (verified against fabric-biome-api-v1 18.0.6). The overworld's layout is
-built in code by `OverworldBiomeBuilder.addBiomes`, so `OverworldBiomeBuilderMixin` appends
-one multi-noise point at the tail. Adding a point can never remove a vanilla biome; the
-sampler picks the nearest point, so the most Waldschatten can do is win ground inside its
-own niche.
+Fabric API has **no overworld biome placement API** — only `NetherBiomes` and `TheEndBiomes`
+(verified against fabric-biome-api-v1 18.0.6). The overworld's layout is built in code by
+`OverworldBiomeBuilder.addBiomes`, so `OverworldBiomeBuilderMixin` is the way in.
 
-The niche is dark forest's climate band (temperate, wet) narrowed to the hilly,
-low-weirdness slice — the wood next door to the dark forest, on the rolling ground the brief
-asks for:
+**It does not append a parameter point, and the reason matters.** Multi-noise scores a sample
+against every point as
 
-| parameter | span |
+```
+fitness = SUM over parameters of (distance from the sample to that range)^2
+```
+
+`distance` is **zero** whenever the sample lies inside the range, and the search keeps the
+first point it finds with a *strictly* lower fitness — vanilla's, because vanilla is added
+first. So a point covering a sub-box of dark forest's climate scores exactly what dark forest
+scores, ties, and loses every tie. **You cannot beat zero with zero.** The first version of
+this mod did exactly that and generated **0 of 4225 samples over eight thousand blocks square**
+while every registry assertion in the battery reported success.
+
+So Waldschatten **claims** ground instead. The mixin wraps the consumer vanilla pours its
+entries into, and every dark forest entry on the **hilly erosion band** (−0.375 … −0.2225)
+comes out as Waldschatten. It inherits dark forest's whole climate envelope and takes a
+defined, explainable piece of it — *the dark forest that grows on broken ground*, which is the
+rolling, hollowed terrain the design called for anyway.
+
+### Measured, in a real world
+
+`WaldschattenWorldSurvey` (a second gametest, in a **normal** world — the battery's world
+offers exactly one biome and can prove nothing about placement) reports:
+
+| | |
 |---|---|
-| temperature | 0.2 … 0.55 |
-| humidity | 0.3 … 1.0 |
-| continentalness | 0.03 … 1.0 |
-| erosion | −0.375 … −0.2225 |
-| weirdness | −0.15 … 0.15 |
-| depth / offset | 0 / 0 |
+| Waldschatten | **0.92%** of samples |
+| vanilla dark forest | 1.28% |
+| vanilla forest | 13.66% |
+| nearest Waldschatten from origin | **519 blocks** |
+| nearest witch hut from origin | **4,262 blocks** |
+
+4225 samples on a 128-block grid over 8192×8192 at y=64, taken straight off the biome source
+with no chunks generated. Slightly rarer than dark forest, findable on foot; the hut is an
+expedition, which is what "rarer than a vanilla swamp hut" was meant to feel like.
 
 ### ⚠ It is a no-op on a Terralith world, silently
 
-Terralith replaces the overworld biome source outright, so a Terralith world never asks the
-vanilla preset what biomes exist and never sees these entries. **No crash, no error, no
-biome.** The empire server runs Terralith (CLAUDE.md rule 2), so shipping there is a
-separate decision needing a lithostitched or TerraBlender route — and lithostitched is not
-currently in `mods.json`. `WaldschattenWorldgen.logPlacement` says at startup what was
-injected, so a missing biome is a discrepancy between the log and the world rather than a
-mystery.
-
-### Tuning the rarity
-
-The climate numbers are a starting point, not a measurement. Rarity is an empirical question
-and `empire-worldgen/tools/survey/` already exists for exactly this kind of counting.
-`offset` is the rarity dial: 0 means "win this niche outright", higher means "only when
-nothing else is close".
+Terralith replaces the overworld biome source outright, so a Terralith world never builds the
+vanilla preset and never sees any of this. **No crash, no error, no biome.** The empire server
+runs Terralith (CLAUDE.md rule 2), so shipping there is a separate decision needing a
+lithostitched or TerraBlender route — and lithostitched is not currently in `mods.json`. The
+mixin logs what it claimed from the tail of the preset build, so a missing biome is a
+discrepancy between the log and the world rather than a mystery.
 
 ### Tag reach — deliberate, not an oversight
 
@@ -258,6 +274,23 @@ the same docs will hit them in the same order.
 | `ResourceKey.location()` | `ResourceKey.identifier()`. |
 | `InsideBlockEffectApplier` in `world.level.block` | `net.minecraft.world.entity`. |
 
+### The one that crashes world generation
+
+**A biome's feature list is not just a list — its ORDER must agree with every other biome in
+the game.** Minecraft demands a single globally consistent ordering of features per decoration
+step and throws `IllegalStateException: Feature order cycle found` mid-chunk-generation when
+two biomes disagree. It names the two biomes and leaves you to work out which features.
+
+Waldschatten shipped with `patch_grass_forest` after the mushrooms while every vanilla forest
+puts it before them. The result was a hard failure generating chunks next to
+`old_growth_birch_forest`.
+
+**A cycle needs two biomes to disagree, so a single-biome test world can never produce one** —
+which is why this survived the entire render battery, every probe, and every assertion, and
+only appeared the first time a real world was generated. `tools/gen-biome.js` now builds the
+ordering graph from every vanilla biome plus ours and refuses to write a biome that would
+cycle, naming the offending feature pair rather than the biomes.
+
 Two more that are about commands rather than the API, both of which cost this battery a full
 run of wrong screenshots:
 
@@ -290,8 +323,8 @@ Deliberately **not** built, so nothing here was scope-crept in silently.
   would be one texture and one entry in `gen-assets.js`.
 - **A second spooky biome.** `#waldschatten:is_spooky` exists so a sibling inherits the
   darkness rule and any future content for free.
-- **Canopy density tuning.** 15–35% of the floor at light 0 is a real "danger in daylight"
-  beat; whether it should be that or half the wood is a design call the measurement now makes
-  answerable. Raising the vegetation `count` above 16 is the dial.
+- **Canopy density tuning.** Floor-at-light-0 measures anywhere from 4% to 35% run to run,
+  which is too noisy to tune against. Widen the survey stand and average several seeds first;
+  then raising the vegetation `count` above 16 is the dial.
 - **Rarity survey.** Point `empire-worldgen/tools/survey/` at a generated world and count how
   often the biome and the hut actually turn up.
