@@ -48,6 +48,11 @@ const TAGS = {
 		"tags/worldgen/biome/is_forest": [B("waldschatten")],
 	},
 	[NS]: {
+		// The wood family's own tag, exactly as vanilla gives every wood type one. The
+		// planks recipe keys off it, so all four log variants craft down the same way.
+		"tags/block/twisted_logs": LOGS,
+		"tags/item/twisted_logs": LOGS,
+
 		// The mod's own hook. Future content — and other mods — can target the mood
 		// rather than the biome id, so a second spooky biome inherits everything for free.
 		"tags/worldgen/biome/is_spooky": [B("waldschatten")],

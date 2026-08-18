@@ -10,12 +10,14 @@ things that hunt you do not wait for evening.
 
 - **The biome.** Temperate, wet, hilly. Every colour is vanilla forest hue-shifted a shade or
   two darker, so it reads as the same woods gone wrong rather than as a different game.
-- **16 blocks** — a full twisted-wood set, thorn vines that slow and scratch anything shoving
-  through them, gnarled floor roots, nightshade, mandrake, witch hazel, bone chimes, ashen
-  soil, cairn stone, and an iron lantern that is the only warm light in the biome.
+- **16 blocks** — a full twisted-wood set that strips, burns and crafts like any other wood;
+  thorn vines that slow and scratch anything shoving through them; gnarled floor roots,
+  nightshade, mandrake, witch hazel, bone chimes that hang from the canopy, ashen soil, cairn
+  stone, and an iron lantern that is the only warm light in the biome.
 - **The dark.** At night Waldschatten is pitch black the way the Warden's territory is, and an
   ordinary torch barely dents it. A **soul torch** is the one light that behaves normally, out
-  to nine blocks — as far as a soul flame's own light actually carries.
+  to nine blocks — as far as a soul flame's own light actually carries. Go down a cave and
+  the rule lets you be; it is about the wood, not the dark in general.
 - **A witch hut** — a crooked cottage on uneven stilts with a steep roof, a smoking chimney, a
   scarecrow, a fenced herb garden, a cauldron in the yard, and somebody already home.
 - **Five set-pieces** scattered through the wood: a gallows clearing, a standing stone circle,

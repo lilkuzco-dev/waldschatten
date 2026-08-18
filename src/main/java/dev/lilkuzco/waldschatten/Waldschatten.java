@@ -24,6 +24,7 @@ public class Waldschatten implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		WaldschattenBlocks.register();
+		WaldschattenBlocks.registerInteractions();
 		WaldschattenItems.register();
 		WaldschattenTab.register();
 		WaldschattenWorldgen.register();

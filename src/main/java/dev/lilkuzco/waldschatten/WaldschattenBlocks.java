@@ -6,6 +6,8 @@ import dev.lilkuzco.waldschatten.block.ThornVineBlock;
 import dev.lilkuzco.waldschatten.block.WaldschattenPlantBlock;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import net.fabricmc.fabric.api.registry.FlammableBlockRegistry;
+import net.fabricmc.fabric.api.registry.StrippableBlockRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -253,6 +255,27 @@ public final class WaldschattenBlocks {
 		register("mossy_cairn_stone", MOSSY_CAIRN_STONE);
 		register("iron_lantern", IRON_LANTERN);
 		register("thorn_vine", THORN_VINE);
+	}
+
+	/**
+	 * The behaviours that make twisted wood behave like wood.
+	 *
+	 * <p>Registered separately from the blocks because none of it is a property of a block —
+	 * stripping is a map held by the axe, and flammability is a table owned by the fire
+	 * block. Miss them and nothing errors: the logs simply cannot be stripped (leaving both
+	 * stripped variants unobtainable in survival) and a forest fire stops dead at the edge
+	 * of this biome. Values are vanilla's own for the equivalent wood.
+	 */
+	public static void registerInteractions() {
+		StrippableBlockRegistry.register(TWISTED_LOG, STRIPPED_TWISTED_LOG);
+		StrippableBlockRegistry.register(TWISTED_WOOD, STRIPPED_TWISTED_WOOD);
+
+		FlammableBlockRegistry fire = FlammableBlockRegistry.getDefaultInstance();
+		for (Block log : new Block[] { TWISTED_LOG, STRIPPED_TWISTED_LOG, TWISTED_WOOD, STRIPPED_TWISTED_WOOD }) {
+			fire.add(log, 5, 5);
+		}
+		fire.add(TWISTED_PLANKS, 5, 20);
+		fire.add(TWISTED_LEAVES, 30, 60);
 	}
 
 	private static void register(String path, Block block) {

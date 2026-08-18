@@ -228,6 +228,29 @@ function main() {
 		lang[`block.${NS}.${id}`] = b.name;
 	}
 
+	// --- recipes ---------------------------------------------------------
+	// Without these, twisted planks and both stripped variants exist only in creative:
+	// there is no vanilla recipe that consumes a modded log, so a wood set that ships
+	// without its own recipes is a wood set nobody can use.
+	write(D("recipe", "twisted_planks.json"), {
+		type: "minecraft:crafting_shapeless",
+		category: "building",
+		group: "planks",
+		ingredients: [`#${NS}:twisted_logs`],
+		result: { count: 4, id: `${NS}:twisted_planks` },
+	});
+	for (const [from, to] of [["twisted_log", "twisted_wood"], ["stripped_twisted_log", "stripped_twisted_wood"]]) {
+		write(D("recipe", `${to}.json`), {
+			type: "minecraft:crafting_shaped",
+			category: "building",
+			group: "bark",
+			key: { "#": `${NS}:${from}` },
+			pattern: ["##", "##"],
+			result: { count: 3, id: `${NS}:${to}` },
+		});
+	}
+	files += 3;
+
 	lang[`itemGroup.${NS}.main`] = "Waldschatten";
 	lang[`biome.${NS}.waldschatten`] = "Waldschatten";
 

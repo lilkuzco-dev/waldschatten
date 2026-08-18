@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "building",
+  "group": "planks",
+  "ingredients": [
+    "#waldschatten:twisted_logs"
+  ],
+  "result": {
+    "count": 4,
+    "id": "waldschatten:twisted_planks"
+  }
+}

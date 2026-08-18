@@ -4,8 +4,10 @@ import dev.lilkuzco.waldschatten.worldgen.WaldschattenWorldgen;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
@@ -17,6 +19,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -78,6 +81,8 @@ public final class WaldschattenDarkness {
 	private static final int REFRESH_BELOW_TICKS = 35;
 	/** How often the *expensive* search may run for a player who has found no soul light. */
 	private static final int FULL_SCAN_INTERVAL_TICKS = 40;
+	/** More rock than this overhead and you are in a cave, not out in the wood. */
+	private static final int UNDERGROUND_DEPTH = 8;
 
 	/**
 	 * Every offset inside the radius, ordered nearest first, packed as x,y,z triples.
@@ -127,6 +132,8 @@ public final class WaldschattenDarkness {
 	 */
 	private static final Map<UUID, BlockPos> LAST_SOUL_LIGHT = new HashMap<>();
 	private static final Map<UUID, Long> LAST_FULL_SCAN = new HashMap<>();
+	/** Who this class has darkened, so it only ever lifts its own darkness. */
+	private static final Set<UUID> DARKENED = new HashSet<>();
 
 	public static void register() {
 		// Both caches are keyed by player UUID, so a player who logs out while in the wood
@@ -150,6 +157,7 @@ public final class WaldschattenDarkness {
 		if (player.isSpectator() || player.isCreative()) {
 			// Creative and spectator players are usually here to look at the place, and a
 			// pulsing black screen is the enemy of that. Survival is where the rule bites.
+			release(player);
 			forget(player);
 			return;
 		}
@@ -157,16 +165,27 @@ public final class WaldschattenDarkness {
 		BlockPos pos = player.blockPosition();
 		boolean inWood = level.getBiome(pos).is(WaldschattenWorldgen.WALDSCHATTEN);
 		if (!inWood || !level.isDarkOutside()) {
+			release(player);
 			forget(player);
 			return;
 		}
 
+		if (isUnderground(level, pos)) {
+			// This rule is about being out in the wood after dark. A player down a cave
+			// under the biome is in an ordinary dark hole and the ordinary dark already
+			// covers it; taking their torchlight away down there is a different, worse
+			// game. Checked before the soul-light search because it is one lookup and it
+			// prunes every caver before anything expensive happens.
+			release(player);
+			return;
+		}
+
 		if (soulLightNear(level, player, pos)) {
-			// The exemption. Lift it immediately rather than waiting the effect out, or a
-			// player who has just lit the right torch stands in the dark wondering why.
-			if (player.hasEffect(MobEffects.DARKNESS)) {
-				player.removeEffect(MobEffects.DARKNESS);
-			}
+			// The exemption. Lifted at once rather than waited out, or a player who has
+			// just lit the right torch stands in the dark wondering why. Note this does
+			// NOT clear the soul-light cache — that cache is exactly what makes standing
+			// in soul light cost one block lookup a tick instead of a search.
+			release(player);
 			return;
 		}
 
@@ -176,6 +195,34 @@ public final class WaldschattenDarkness {
 		if (current == null || current.getDuration() < REFRESH_BELOW_TICKS) {
 			player.addEffect(new MobEffectInstance(
 					MobEffects.DARKNESS, DARKNESS_DURATION_TICKS, 0, false, false));
+		}
+		DARKENED.add(player.getUUID());
+	}
+
+	/**
+	 * Is there enough rock over this player to call it a cave?
+	 *
+	 * <p>The heightmap deliberately ignores leaves, so a player standing on the forest
+	 * floor under a closed canopy still reads as being at the surface — which is the entire
+	 * population this rule exists for. A hut's plank roof is only a few blocks up and does
+	 * not exempt anyone; a cave does.
+	 */
+	private static boolean isUnderground(ServerLevel level, BlockPos pos) {
+		int surface = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, pos.getX(), pos.getZ());
+		return surface - pos.getY() > UNDERGROUND_DEPTH;
+	}
+
+	/**
+	 * Lift the dark — but only from a player this class actually darkened.
+	 *
+	 * <p>{@code removeEffect} cannot ask where an effect came from, so an unguarded call
+	 * would cheerfully cancel a Warden's or a sculk shrieker's darkness for anyone who
+	 * stepped near a soul torch. Tracking who we darkened keeps this rule from reaching
+	 * into somebody else's.
+	 */
+	private static void release(ServerPlayer player) {
+		if (DARKENED.remove(player.getUUID()) && player.hasEffect(MobEffects.DARKNESS)) {
+			player.removeEffect(MobEffects.DARKNESS);
 		}
 	}
 
@@ -254,6 +301,7 @@ public final class WaldschattenDarkness {
 	private static void forget(ServerPlayer player) {
 		LAST_SOUL_LIGHT.remove(player.getUUID());
 		LAST_FULL_SCAN.remove(player.getUUID());
+		DARKENED.remove(player.getUUID());
 	}
 
 	private WaldschattenDarkness() {

@@ -114,6 +114,63 @@ public class WaldschattenRenderTest implements FabricClientGameTest {
 				dev.lilkuzco.waldschatten.Waldschatten.LOGGER.info(
 						"WALDSCHATTEN_PLACEMENT (context) this gametest world offers {} biome(s), so it "
 								+ "exercises colour and rules, not placement", source.possibleBiomes().size());
+
+				// Structure wiring. /place proves a template can be stamped down; it proves
+				// nothing about whether the game would ever choose to. That chain is four
+				// files agreeing on names that appear nowhere else — structure -> biome tag
+				// -> structure_set -> pool — and when they disagree the structure simply
+				// never generates, with no error anywhere. So resolve each one from the
+				// registry and check it is actually gated to this biome.
+				var registries = mcServer.registryAccess();
+				var biome = registries.lookupOrThrow(net.minecraft.core.registries.Registries.BIOME)
+						.getOrThrow(dev.lilkuzco.waldschatten.worldgen.WaldschattenWorldgen.WALDSCHATTEN);
+				var structures = registries.lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE);
+				var structureSets = registries.lookupOrThrow(net.minecraft.core.registries.Registries.STRUCTURE_SET);
+
+				java.util.List<String> problems = new java.util.ArrayList<>();
+				for (String name : new String[] { "witch_hut", "gallows", "stone_circle", "grimm_shrine", "sunken_cottage", "fairy_ring" }) {
+					var key = net.minecraft.resources.ResourceKey.create(
+							net.minecraft.core.registries.Registries.STRUCTURE, dev.lilkuzco.waldschatten.Waldschatten.id(name));
+					var holder = structures.get(key);
+					if (holder.isEmpty()) {
+						problems.add(name + " is not registered");
+					} else if (!holder.get().value().biomes().contains(biome)) {
+						problems.add(name + " is not gated to the waldschatten biome");
+					}
+				}
+				int sets = 0;
+				for (String name : new String[] { "witch_huts", "set_pieces" }) {
+					var key = net.minecraft.resources.ResourceKey.create(
+							net.minecraft.core.registries.Registries.STRUCTURE_SET, dev.lilkuzco.waldschatten.Waldschatten.id(name));
+					if (structureSets.get(key).isEmpty()) {
+						problems.add("structure set " + name + " is not registered");
+					} else {
+						sets++;
+					}
+				}
+				dev.lilkuzco.waldschatten.Waldschatten.LOGGER.info(
+						"WALDSCHATTEN_STRUCTURES 6 structures + {} sets wired to the biome; problems: {}",
+						sets, problems.isEmpty() ? "none" : problems);
+
+				// The wood set has to be craftable, and the way that breaks is quiet: a
+				// recipe whose ingredient tag does not resolve still loads, it just matches
+				// nothing, and the only symptom is a crafting grid that refuses to work.
+				// So check the tag has members AND that each recipe is in the manager.
+				var logTag = registries.lookupOrThrow(net.minecraft.core.registries.Registries.ITEM)
+						.get(net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,
+								dev.lilkuzco.waldschatten.Waldschatten.id("twisted_logs")));
+				int tagged = logTag.map(holders -> holders.size()).orElse(0);
+				java.util.List<String> missingRecipes = new java.util.ArrayList<>();
+				for (String name : new String[] { "twisted_planks", "twisted_wood", "stripped_twisted_wood" }) {
+					var key = net.minecraft.resources.ResourceKey.create(
+							net.minecraft.core.registries.Registries.RECIPE, dev.lilkuzco.waldschatten.Waldschatten.id(name));
+					if (mcServer.getRecipeManager().byKey(key).isEmpty()) {
+						missingRecipes.add(name);
+					}
+				}
+				dev.lilkuzco.waldschatten.Waldschatten.LOGGER.info(
+						"WALDSCHATTEN_RECIPES #waldschatten:twisted_logs resolves to {} item(s); missing recipes: {}",
+						tagged, missingRecipes.isEmpty() ? "none" : missingRecipes);
 			});
 			context.waitTicks(10);
 

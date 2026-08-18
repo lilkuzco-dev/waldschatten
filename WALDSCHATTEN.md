@@ -49,7 +49,15 @@ and was quietly inconsistent: the fast path admitted a soul torch at thirteen bl
 some *unrelated* light happened to be burning nearby.
 
 Soul light sources are the `#waldschatten:soul_light` block tag, so a pack can add its own.
-Creative and spectator players are exempt.
+Creative and spectator players are exempt, and so is anyone more than 8 blocks below the
+surface: this rule is about being out in the wood after dark, and a player down a cave under
+the biome is in an ordinary dark hole that the ordinary dark already covers. The heightmap
+used ignores leaves, so standing on the forest floor under a closed canopy still counts as
+being at the surface — which is the entire population the rule exists for.
+
+The class only ever lifts darkness it applied itself. `removeEffect` cannot ask where an
+effect came from, so an unguarded call would cancel a *Warden's* darkness for anyone who
+stepped near a soul torch.
 
 ---
 
@@ -69,7 +77,16 @@ Per CLAUDE.md rule 9 the ship is not green until they have been **looked at**.
 | `dark_soul_torch` | **the same spot, lit, cold-blue — only the soul torch changed** |
 | `dark_again` | the torch removed; the dark returns, the ordinary torch still useless |
 
-The battery also asserts four things a screenshot cannot:
+The battery also asserts six things a screenshot cannot:
+
+- **`WALDSCHATTEN_STRUCTURES ... problems: none`** — all six structures resolve from the
+  registry and every one is gated to this biome, and both structure sets exist. `/place`
+  proves a template can be stamped down; it proves nothing about whether the game would ever
+  choose to. That chain is four files agreeing on names that appear nowhere else, and when
+  they disagree the structure simply never generates, with no error anywhere.
+- **`WALDSCHATTEN_RECIPES ... resolves to 4 item(s); missing recipes: none`** — the wood set
+  is craftable. A recipe whose ingredient tag does not resolve still loads; it just matches
+  nothing, and the only symptom is a crafting grid that quietly refuses to work.
 
 - **`WALDSCHATTEN_CHIMES ... 0 cannot survive where they hang`** — every bone chime the
   canopy hung can actually stay there. Worldgen writes blocks without neighbour updates, so a
@@ -112,6 +129,7 @@ tools/                       generators — EDIT THESE, never their output (rule
   gen-assets.js              blockstates, models, item defs, loot tables, en_us
   gen-worldgen.js            configured + placed features, and cross-checks them
   gen-tags.js                block/item/biome tags
+  lint-structures.js         every block in every template can survive where it is put
   gen-structures.js          NBT templates + pools + structures + structure sets
   contact-sheet.js           texture proof sheet
 
