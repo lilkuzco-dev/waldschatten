@@ -63,15 +63,23 @@ Per CLAUDE.md rule 9 the ship is not green until they have been **looked at**.
 | `dark_soul_torch` | **the same spot, lit, cold-blue — only the soul torch changed** |
 | `dark_again` | the torch removed; the dark returns, the ordinary torch still useless |
 
-The battery also asserts two things a screenshot cannot:
+The battery also asserts three things a screenshot cannot:
 
+- **`WALDSCHATTEN_PLACEMENT ... contains waldschatten: true (56 biomes in the preset)`** —
+  the mixin injection actually took. Asked of the **vanilla overworld preset**, not of the
+  test world, because the preset is what the mixin appends to, so the answer holds for any
+  world. (The gametest world offers exactly **1** biome — it is a single-biome world, so it
+  exercises colour and rules and cannot show placement either way. Do not read its `false` as
+  a broken injection; that mistake is one line above the assertion in the source.)
 - **`WALDSCHATTEN_PROBE <scene> OK`** — the camera is genuinely inside the biome. Colour is
   the thing under test, so this may not be assumed. It has caught a whole run of
   vanilla-green frames more than once.
 - **`WALDSCHATTEN_LIGHT`** — sweeps 225 floor positions under a closed canopy at noon and
-  reports the distribution. Last run: **sky min 0, max 15, mean 5.3, and 25% of the floor at
-  light 0** — the level overworld hostiles need. That is the "danger in daylight" beat,
-  measured rather than claimed.
+  reports the distribution. Trees are placed randomly, so the figure moves between runs:
+  observed **15–33% of the floor at light 0**, mean sky light 3.6–6.5, with min 0 every time.
+  That is the "danger in daylight" beat, measured rather than claimed — and the spread is
+  itself the answer to "how dense should the canopy be", which is now a question with a
+  number attached instead of a vibe.
 
 `node tools/contact-sheet.js` composites every texture scaled up on a checkerboard so the
 placeholders can be judged as art and their alpha seen rather than guessed at.
@@ -251,7 +259,8 @@ Deliberately **not** built, so nothing here was scope-crept in silently.
   would be one texture and one entry in `gen-assets.js`.
 - **A second spooky biome.** `#waldschatten:is_spooky` exists so a sibling inherits the
   darkness rule and any future content for free.
-- **Canopy density tuning.** 25% of the floor at light 0 is a real "danger in daylight" beat;
-  whether it should be 25% or 50% is a design call the measurement now makes answerable.
+- **Canopy density tuning.** 15–33% of the floor at light 0 is a real "danger in daylight"
+  beat; whether it should be that or half the wood is a design call the measurement now makes
+  answerable. Raising the vegetation `count` above 16 is the dial.
 - **Rarity survey.** Point `empire-worldgen/tools/survey/` at a generated world and count how
   often the biome and the hut actually turn up.

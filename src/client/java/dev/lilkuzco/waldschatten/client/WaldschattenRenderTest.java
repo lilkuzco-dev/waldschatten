@@ -82,6 +82,41 @@ public class WaldschattenRenderTest implements FabricClientGameTest {
 			server.runCommand("kill @e[type=!minecraft:player]");
 			context.waitTicks(20);
 
+			// The acceptance question nothing else here answers: is the biome actually IN
+			// this world's generator? Every scene below paints it on with /fillbiome, which
+			// proves its colours and its rules but says nothing about whether the
+			// multi-noise injection landed — and that injection is a silent no-op under any
+			// mod that replaces the biome source (Terralith, most of all).
+			//
+			// Asked of the live biome source rather than with `/locate biome`: locate
+			// depends on a finite search radius finding a narrow niche, so a miss there
+			// would be ambiguous, and its console feedback does not reach the log anyway.
+			// possibleBiomes() is a straight yes or no.
+			server.runOnServer(mcServer -> {
+				// The assertion that matters, and it is asked of the vanilla overworld
+				// PRESET rather than of this world: the preset is what
+				// OverworldBiomeBuilderMixin appends to, so this is a direct yes/no on
+				// whether the injection took, in any world, forever.
+				var preset = net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD;
+				long total = preset.usedBiomes().count();
+				boolean injected = preset.usedBiomes()
+						.anyMatch(key -> key.equals(dev.lilkuzco.waldschatten.worldgen.WaldschattenWorldgen.WALDSCHATTEN));
+				dev.lilkuzco.waldschatten.Waldschatten.LOGGER.info(
+						"WALDSCHATTEN_PLACEMENT vanilla overworld preset contains waldschatten: {} "
+								+ "({} biomes in the preset)", injected, total);
+
+				// And for context, this world's own biome source. The gametest world is a
+				// SINGLE-BIOME world (possibleBiomes() == 1), so it cannot show placement
+				// either way — which is exactly why the real assertion is the one above.
+				// Do not read a `false` here as a broken injection.
+				net.minecraft.world.level.biome.BiomeSource source =
+						mcServer.overworld().getChunkSource().getGenerator().getBiomeSource();
+				dev.lilkuzco.waldschatten.Waldschatten.LOGGER.info(
+						"WALDSCHATTEN_PLACEMENT (context) this gametest world offers {} biome(s), so it "
+								+ "exercises colour and rules, not placement", source.possibleBiomes().size());
+			});
+			context.waitTicks(10);
+
 			blockBoard(context, server);
 			canopy(context, server);
 			witchHut(context, server);
