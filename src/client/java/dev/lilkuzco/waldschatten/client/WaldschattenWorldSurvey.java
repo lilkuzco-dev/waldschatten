@@ -62,6 +62,13 @@ public class WaldschattenWorldSurvey implements FabricClientGameTest {
 				ServerLevel level = mcServer.overworld();
 				BiomeSource source = level.getChunkSource().getGenerator().getBiomeSource();
 
+				// Which worldgen is this? The answer changes what the numbers mean, and a
+				// survey that does not say is a survey nobody can act on.
+				var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
+				Waldschatten.LOGGER.info("WALDSCHATTEN_SURVEY worldgen context: terralith={} lithostitched={} biomeSource={}",
+						loader.isModLoaded("terralith"), loader.isModLoaded("lithostitched"),
+						source.getClass().getSimpleName());
+
 				int possible = source.possibleBiomes().size();
 				boolean present = source.possibleBiomes().stream()
 						.anyMatch(holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN));

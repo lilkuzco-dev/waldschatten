@@ -25,6 +25,15 @@ loom {
 			vmArg "-Dfabric.client.gametest"
 			runDir "build/run-gametest"
 		}
+		// The same worldgen survey, but with Terralith and lithostitched dropped in beside
+		// us. The empire server runs Terralith, and "does this biome exist there" is not a
+		// question that can be answered by reasoning about which file overrides which.
+		terralithSurvey {
+			inherit client
+			vmArg "-Dfabric.client.gametest"
+			vmArg "-Dwaldschatten.survey.only=true"
+			runDir "build/run-terralith"
+		}
 	}
 }
 
@@ -37,6 +46,34 @@ tasks.matching { it.name == 'runGametest' }.configureEach {
 		new File(runDir, 'eula.txt').text =
 				"# written by the gametest run config; build/run-gametest is disposable\n" +
 				"eula=true\n"
+	}
+}
+
+// Stages Terralith + lithostitched into the survey run's mods folder. They are not a build
+// dependency and are never shipped — this only exists so the Terralith question can be
+// answered by measurement. Point WALDSCHATTEN_TERRALITH_MODS at any folder holding them.
+tasks.matching { it.name == 'runTerralithSurvey' }.configureEach {
+	doFirst {
+		def runDir = file('build/run-terralith')
+		runDir.mkdirs()
+		new File(runDir, 'eula.txt').text = "# throwaway survey world\neula=true\n"
+		def modsDir = new File(runDir, 'mods')
+		modsDir.mkdirs()
+		def source = System.getenv('WALDSCHATTEN_TERRALITH_MODS')
+				?: "${System.getProperty('user.home')}/Desktop/mc-server/server-mods-staging"
+		def wanted = ['Terralith', 'lithostitched']
+		def found = []
+		file(source).listFiles()?.each { f ->
+			if (f.name.endsWith('.jar') && wanted.any { f.name.toLowerCase().startsWith(it.toLowerCase()) }) {
+				new File(modsDir, f.name).bytes = f.bytes
+				found << f.name
+			}
+		}
+		if (found.size() < 2) {
+			throw new GradleException("Terralith survey needs Terralith and lithostitched jars in ${source} "
+					+ "(found ${found}); set WALDSCHATTEN_TERRALITH_MODS to a folder that has them")
+		}
+		logger.lifecycle("Terralith survey: staged ${found}")
 	}
 }
 

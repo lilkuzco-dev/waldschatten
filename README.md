@@ -56,6 +56,15 @@ node tools/contact-sheet.js  # texture proof sheet -> build/texture-contact-shee
 
 All 16 textures are **placeholders** awaiting real art.
 
+Two survey tasks answer "does this biome actually turn up":
+
+```sh
+./gradlew runGametest           # includes a survey of a normal vanilla world
+./gradlew runTerralithSurvey    # the same survey with real Terralith + lithostitched loaded
+```
+
+Both report roughly **1% of the world**, comparable to vanilla dark forest.
+
 See [WALDSCHATTEN.md](WALDSCHATTEN.md) for the design rulings, the file map, the phase 2 list,
 and a table of everything 1.21-era worldgen knowledge gets wrong on 26.2.
 

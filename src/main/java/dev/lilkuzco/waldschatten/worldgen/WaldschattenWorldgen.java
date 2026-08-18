@@ -2,6 +2,11 @@ package dev.lilkuzco.waldschatten.worldgen;
 
 import com.mojang.datafixers.util.Pair;
 import dev.lilkuzco.waldschatten.Waldschatten;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
@@ -64,29 +69,73 @@ public final class WaldschattenWorldgen {
 	// ---------------------------------------------------------------------------
 
 	/** Erosion band 2 (-0.375 .. -0.2225): vanilla's hilly, broken ground. */
-	private static final long HILLY_EROSION_MIN = Climate.quantizeCoord(-0.375F);
+	private static final long HILLY_MIN = Climate.quantizeCoord(-0.375F);
+	private static final long HILLY_MAX = Climate.quantizeCoord(-0.2225F);
 
-	private static int claimed = 0;
+	/**
+	 * A biome lookup, borrowed from whoever last built a multi-noise parameter list.
+	 * Volatile because worldgen touches it from several threads.
+	 */
+	private static volatile HolderGetter<Biome> biomeLookup;
 
-	/** Called at the head of each preset build, so the count is per-build not cumulative. */
-	public static void resetClaimCount() {
-		claimed = 0;
+	public static void rememberBiomeLookup(HolderGetter<Biome> biomes) {
+		biomeLookup = biomes;
 	}
 
 	/**
-	 * Called for every entry vanilla adds to the overworld preset, via the mixin.
-	 * Returns the entry unchanged, or the same climate point re-pointed at Waldschatten.
+	 * Returns the list with our slice claimed out of it, or the list untouched.
+	 *
+	 * <p>Every dark forest entry that overlaps the hilly erosion band becomes Waldschatten.
+	 * Overlap rather than exact equality on purpose: vanilla emits that band both alone and
+	 * spanned together with its neighbour, and a mod's list may be shaped differently again.
 	 */
-	public static Pair<Climate.ParameterPoint, ResourceKey<Biome>> claim(
-			Pair<Climate.ParameterPoint, ResourceKey<Biome>> entry) {
-		if (!Biomes.DARK_FOREST.equals(entry.getSecond())) {
-			return entry;
+	public static Climate.ParameterList<Holder<Biome>> claimIn(Climate.ParameterList<Holder<Biome>> original) {
+		HolderGetter<Biome> lookup = biomeLookup;
+		if (lookup == null) {
+			Waldschatten.LOGGER.warn("Waldschatten could not claim any ground: no biome lookup was captured.");
+			return original;
 		}
-		if (entry.getFirst().erosion().min() != HILLY_EROSION_MIN) {
-			return entry;
+		Optional<Holder.Reference<Biome>> ours = lookup.get(WALDSCHATTEN);
+		if (ours.isEmpty()) {
+			// The biome is not in this world's registry at all (a datapack disabled it, or
+			// this is some other dimension's source). Leave everything alone.
+			return original;
 		}
-		claimed++;
-		return Pair.of(entry.getFirst(), WALDSCHATTEN);
+
+		List<Pair<Climate.ParameterPoint, Holder<Biome>>> claimed = new ArrayList<>();
+		int taken = 0;
+		int darkForest = 0;
+		for (Pair<Climate.ParameterPoint, Holder<Biome>> entry : original.values()) {
+			if (entry.getSecond().is(Biomes.DARK_FOREST)) {
+				darkForest++;
+			}
+			if (entry.getSecond().is(Biomes.DARK_FOREST) && overlapsHillyErosion(entry.getFirst())) {
+				claimed.add(Pair.of(entry.getFirst(), ours.get()));
+				taken++;
+			} else {
+				claimed.add(entry);
+			}
+		}
+
+		if (taken == 0) {
+			// Only worth a warning if there was dark forest here to claim from. This runs for
+			// EVERY multi-noise source, and the Nether has five entries and no dark forest —
+			// warning about that is noise that trains people to ignore the warning that
+			// matters, which is a dark forest we somehow failed to take a slice of.
+			if (darkForest > 0) {
+				Waldschatten.LOGGER.warn(
+						"Waldschatten claimed NOTHING from a source with {} dark forest entries — the "
+								+ "biome will not generate in this world.", darkForest);
+			}
+			return original;
+		}
+		Waldschatten.LOGGER.info("Waldschatten claimed {} of {} climate entries from this world's biome source.",
+				taken, original.values().size());
+		return new Climate.ParameterList<>(claimed);
+	}
+
+	private static boolean overlapsHillyErosion(Climate.ParameterPoint point) {
+		return point.erosion().min() <= HILLY_MAX && point.erosion().max() >= HILLY_MIN;
 	}
 
 	public static void register() {
@@ -101,17 +150,6 @@ public final class WaldschattenWorldgen {
 						+ "is expected, not a bug.");
 	}
 
-	/**
-	 * Reports what was actually taken, from the tail of the preset build.
-	 *
-	 * <p>Logged there and not at mod init because the preset is built lazily, long after
-	 * {@code onInitialize} — an init-time log of this counter prints 0 every single time and
-	 * reads exactly like a broken injection.
-	 */
-	public static void logClaimed() {
-		Waldschatten.LOGGER.info("Waldschatten claimed {} dark-forest climate point(s) from the "
-				+ "vanilla overworld preset.", claimed);
-	}
 
 	private WaldschattenWorldgen() {
 	}

@@ -61,6 +61,11 @@ public class WaldschattenRenderTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (Boolean.getBoolean("waldschatten.survey.only")) {
+			// The Terralith survey run only wants the worldgen answer; screenshots taken
+			// under a different worldgen mod would be confusing evidence, not better.
+			return;
+		}
 		// Render distance must be set BEFORE the world is created: the integrated server
 		// snapshots view distance at connect, and setting it mid-session never widens the
 		// chunks actually served — the camera just looks at fog.

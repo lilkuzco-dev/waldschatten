@@ -167,55 +167,72 @@ referenced, or if a template pool names an NBT file that is not there. The first
 
 ## Where the biome actually generates
 
-Fabric API has **no overworld biome placement API** — only `NetherBiomes` and `TheEndBiomes`
-(verified against fabric-biome-api-v1 18.0.6). The overworld's layout is built in code by
-`OverworldBiomeBuilder.addBiomes`, so `OverworldBiomeBuilderMixin` is the way in.
+Fabric API has **no overworld biome placement API** — only `NetherBiomes` and `TheEndBiomes`.
+So this is a mixin. Two things about it are not obvious and both were learned the hard way.
 
-**It does not append a parameter point, and the reason matters.** Multi-noise scores a sample
-against every point as
+**1. Appending a parameter point can never work.** Multi-noise scores a sample as
 
 ```
 fitness = SUM over parameters of (distance from the sample to that range)^2
 ```
 
 `distance` is **zero** whenever the sample lies inside the range, and the search keeps the
-first point it finds with a *strictly* lower fitness — vanilla's, because vanilla is added
-first. So a point covering a sub-box of dark forest's climate scores exactly what dark forest
-scores, ties, and loses every tie. **You cannot beat zero with zero.** The first version of
-this mod did exactly that and generated **0 of 4225 samples over eight thousand blocks square**
-while every registry assertion in the battery reported success.
+first point with a *strictly* lower fitness — vanilla's, because vanilla is added first. A
+point covering a sub-box of dark forest's climate scores exactly what dark forest scores,
+ties, and loses every tie. **You cannot beat zero with zero.** The first version did this and
+generated **0 of 4225 samples** while every registry assertion reported success.
 
-So Waldschatten **claims** ground instead. The mixin wraps the consumer vanilla pours its
-entries into, and every dark forest entry on the **hilly erosion band** (−0.375 … −0.2225)
-comes out as Waldschatten. It inherits dark forest's whole climate envelope and takes a
-defined, explainable piece of it — *the dark forest that grows on broken ground*, which is the
-rolling, hollowed terrain the design called for anyway.
+So Waldschatten **claims** ground: every dark forest entry overlapping the **hilly erosion
+band** (−0.375 … −0.2225) is re-pointed at Waldschatten. It inherits dark forest's whole
+climate envelope and takes a defined, explainable piece of it — *the dark forest that grows on
+broken ground*, which is the rolling terrain the design wanted anyway.
 
-### Measured, in a real world
+**2. The claim happens at the biome SOURCE, not at `OverworldBiomeBuilder`.** There are two
+overworlds in play and only that layer sees both:
 
-`WaldschattenWorldSurvey` (a second gametest, in a **normal** world — the battery's world
-offers exactly one biome and can prove nothing about placement) reports:
+- On **vanilla** worldgen the list comes from `OverworldBiomeBuilder`.
+- On the **empire server** it does not. Terralith ships a
+  `multi_noise_biome_source_parameter_list/overworld.json` whose `lithostitched:biomes` field
+  supplies the entries outright, so the vanilla builder's output is discarded — a claim made
+  there vanishes with it. Measured, not assumed: a survey with Terralith and lithostitched
+  installed reported 146 biomes and Waldschatten **absent**, while the claim had logged 72
+  successful substitutions into a list nobody used.
 
-| | |
-|---|---|
-| Waldschatten | **0.92%** of samples |
-| vanilla dark forest | 1.28% |
-| vanilla forest | 13.66% |
-| nearest Waldschatten from origin | **519 blocks** |
-| nearest witch hut from origin | **4,262 blocks** |
+Both routes end in a `MultiNoiseBiomeSource` resolving a `Climate.ParameterList`, so
+`MultiNoiseBiomeSourceMixin` takes the list as it comes out of there (memoised — it is called
+per biome cell). It does not care who wrote the list, needs no new dependency, and never
+fights another mod over a file path. That last point matters: lithostitched has **no
+biome-adding modifier**, so the only lithostitched-shaped answer would be shipping the same
+`overworld.json` Terralith already owns, and one of the two would silently win.
 
-4225 samples on a 128-block grid over 8192×8192 at y=64, taken straight off the biome source
-with no chunks generated. Slightly rarer than dark forest, findable on foot; the hut is an
-expedition, which is what "rarer than a vanilla swamp hut" was meant to feel like.
+`MultiNoiseBiomeSourceParameterListMixin` exists only to borrow the `HolderGetter<Biome>` on
+its way past — that constructor is the one place in the chain handed a biome lookup, and
+rewriting a list requires a `Holder` for the biome being written in.
 
-### ⚠ It is a no-op on a Terralith world, silently
+### Measured, in real worlds
 
-Terralith replaces the overworld biome source outright, so a Terralith world never builds the
-vanilla preset and never sees any of this. **No crash, no error, no biome.** The empire server
-runs Terralith (CLAUDE.md rule 2), so shipping there is a separate decision needing a
-lithostitched or TerraBlender route — and lithostitched is not currently in `mods.json`. The
-mixin logs what it claimed from the tail of the preset build, so a missing biome is a
-discrepancy between the log and the world rather than a mystery.
+`WaldschattenWorldSurvey` runs in a **normal** world (the render battery's world offers exactly
+one biome and can prove nothing about placement). `./gradlew runGametest` covers vanilla;
+`./gradlew runTerralithSurvey` stages the real Terralith and lithostitched jars beside the mod
+and asks again.
+
+| | vanilla | Terralith + lithostitched |
+|---|---|---|
+| biomes in the world | 56 | 147 |
+| **Waldschatten** | **0.95 – 1.16%** | **1.04 – 1.44%** |
+| vanilla dark forest | 0.97 – 1.40% | 0.24 – 0.57% |
+| vanilla forest | 11.3 – 11.8% | 4.2 – 5.5% |
+| entries claimed | 102 of 7594 | 30 of 1710 |
+| nearest, from origin | 614 – 1970 blocks | 251 – 804 blocks |
+| nearest witch hut | 3.8k – 6.5k blocks | 3.8k blocks |
+
+4225 samples on a 128-block grid over 8192×8192 at y=64, taken off the biome source with no
+chunks generated. Roughly one percent of the world in both, comparable to vanilla dark forest,
+findable on foot, with the hut a genuine expedition.
+
+The survey points `runTerralithSurvey` at `~/Desktop/mc-server/server-mods-staging` by default;
+set `WALDSCHATTEN_TERRALITH_MODS` to any folder holding the two jars. They are staged into the
+run directory only — never a build dependency, never shipped.
 
 ### Tag reach — deliberate, not an oversight
 
