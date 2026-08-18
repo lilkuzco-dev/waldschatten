@@ -144,10 +144,9 @@ public final class WaldschattenWorldgen {
 
 	private static void logPlacement() {
 		Waldschatten.LOGGER.info(
-				"Waldschatten will claim vanilla dark-forest points on the hilly erosion band. "
-						+ "A world whose biome source is replaced (Terralith, Terrablender, a custom "
-						+ "dimension) never builds that preset and will not contain the biome — that "
-						+ "is expected, not a bug.");
+				"Waldschatten will claim dark-forest points on the hilly erosion band directly "
+						+ "from each multi-noise biome source. Sources without an overlapping dark-forest "
+						+ "entry remain unchanged.");
 	}
 
 

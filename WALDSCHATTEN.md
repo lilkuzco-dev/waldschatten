@@ -219,12 +219,12 @@ and asks again.
 | | vanilla | Terralith + lithostitched |
 |---|---|---|
 | biomes in the world | 56 | 147 |
-| **Waldschatten** | **0.95 – 1.16%** | **1.04 – 1.44%** |
+| **Waldschatten** | **0.40 – 1.16%** | **1.04 – 1.99%** |
 | vanilla dark forest | 0.97 – 1.40% | 0.24 – 0.57% |
 | vanilla forest | 11.3 – 11.8% | 4.2 – 5.5% |
 | entries claimed | 102 of 7594 | 30 of 1710 |
-| nearest, from origin | 614 – 1970 blocks | 251 – 804 blocks |
-| nearest witch hut | 3.8k – 6.5k blocks | 3.8k blocks |
+| nearest, from origin | 614 – 1970 blocks | 251 – 1505 blocks |
+| nearest witch hut | 3.8k – 6.5k blocks | 3.2k – 3.8k blocks |
 
 4225 samples on a 128-block grid over 8192×8192 at y=64, taken off the biome source with no
 chunks generated. Roughly one percent of the world in both, comparable to vanilla dark forest,
