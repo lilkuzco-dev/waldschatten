@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "waldschatten:blocks/twisted_sapling",
+  "pools": [
+    {
+      "rolls": 1,
+      "bonus_rolls": 0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "waldschatten:twisted_sapling"
+        }
+      ]
+    }
+  ]
+}

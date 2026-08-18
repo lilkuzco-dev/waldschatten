@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/carpet",
+  "textures": {
+    "wool": "waldschatten:block/gnarled_roots"
+  }
+}

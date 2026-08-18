@@ -1,0 +1,35 @@
+{
+	"schemaVersion": 1,
+	"id": "waldschatten",
+	"version": "${version}",
+	"name": "Waldschatten",
+	"description": "Forest Shadow: a Brothers Grimm reading of the Schwarzwald. A canopy dense enough that things spawn under it at noon, thorns that make you pay for the shortcut, and a crooked hut with someone already home.",
+	"authors": [
+		"lilkuzco-dev"
+	],
+	"contact": {
+		"sources": "https://github.com/lilkuzco-dev/waldschatten"
+	},
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.lilkuzco.waldschatten.Waldschatten"
+		],
+		"client": [
+			"dev.lilkuzco.waldschatten.client.WaldschattenClient"
+		],
+		"fabric-client-gametest": [
+			"dev.lilkuzco.waldschatten.client.WaldschattenRenderTest"
+		]
+	},
+	"mixins": [
+		"waldschatten.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

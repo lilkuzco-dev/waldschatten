@@ -1,0 +1,16 @@
+{
+  "variants": {
+    "axis=y": {
+      "model": "waldschatten:block/stripped_twisted_wood"
+    },
+    "axis=z": {
+      "model": "waldschatten:block/stripped_twisted_wood",
+      "x": 90
+    },
+    "axis=x": {
+      "model": "waldschatten:block/stripped_twisted_wood",
+      "x": 90,
+      "y": 90
+    }
+  }
+}

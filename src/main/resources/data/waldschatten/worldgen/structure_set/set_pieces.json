@@ -1,0 +1,34 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 481357911,
+    "spacing": 14,
+    "separation": 6,
+    "exclusion_zone": {
+      "chunk_count": 4,
+      "other_set": "waldschatten:witch_huts"
+    }
+  },
+  "structures": [
+    {
+      "structure": "waldschatten:fairy_ring",
+      "weight": 6
+    },
+    {
+      "structure": "waldschatten:stone_circle",
+      "weight": 4
+    },
+    {
+      "structure": "waldschatten:gallows",
+      "weight": 3
+    },
+    {
+      "structure": "waldschatten:grimm_shrine",
+      "weight": 3
+    },
+    {
+      "structure": "waldschatten:sunken_cottage",
+      "weight": 2
+    }
+  ]
+}

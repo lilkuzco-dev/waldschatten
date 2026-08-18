@@ -1,0 +1,20 @@
+{
+  "biome.waldschatten.waldschatten": "Waldschatten",
+  "block.waldschatten.ashen_soil": "Ashen Soil",
+  "block.waldschatten.bone_chime": "Bone Chime",
+  "block.waldschatten.gnarled_roots": "Gnarled Roots",
+  "block.waldschatten.iron_lantern": "Iron Lantern",
+  "block.waldschatten.mandrake_root": "Mandrake Root",
+  "block.waldschatten.mossy_cairn_stone": "Mossy Cairn Stone",
+  "block.waldschatten.nightshade_plant": "Nightshade",
+  "block.waldschatten.stripped_twisted_log": "Stripped Twisted Log",
+  "block.waldschatten.stripped_twisted_wood": "Stripped Twisted Wood",
+  "block.waldschatten.thorn_vine": "Thorn Vine",
+  "block.waldschatten.twisted_leaves": "Twisted Leaves",
+  "block.waldschatten.twisted_log": "Twisted Log",
+  "block.waldschatten.twisted_planks": "Twisted Planks",
+  "block.waldschatten.twisted_sapling": "Twisted Sapling",
+  "block.waldschatten.twisted_wood": "Twisted Wood",
+  "block.waldschatten.witch_hazel_bush": "Witch Hazel Bush",
+  "itemGroup.waldschatten.main": "Waldschatten"
+}

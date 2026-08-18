@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "waldschatten:block/twisted_log",
+    "side": "waldschatten:block/twisted_log"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 793214077,
+    "spacing": 44,
+    "separation": 17
+  },
+  "structures": [
+    {
+      "structure": "waldschatten:witch_hut",
+      "weight": 1
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cross",
+  "textures": {
+    "cross": "waldschatten:block/witch_hazel_bush"
+  }
+}

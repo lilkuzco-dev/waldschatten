@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "hanging=false": {
+      "model": "waldschatten:block/iron_lantern"
+    },
+    "hanging=true": {
+      "model": "waldschatten:block/iron_lantern_hanging"
+    }
+  }
+}

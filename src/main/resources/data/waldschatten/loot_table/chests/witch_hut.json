@@ -1,0 +1,91 @@
+{
+  "type": "minecraft:chest",
+  "random_sequence": "waldschatten:chests/witch_hut",
+  "pools": [
+    {
+      "rolls": { "type": "minecraft:uniform", "min": 3.0, "max": 5.0 },
+      "bonus_rolls": 0.0,
+      "entries": [
+        { "type": "minecraft:item", "name": "minecraft:spider_eye", "weight": 12,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:fermented_spider_eye", "weight": 8 },
+        { "type": "minecraft:item", "name": "minecraft:glowstone_dust", "weight": 8,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 4.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:redstone", "weight": 8,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 6.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:sugar", "weight": 8,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 4.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:gunpowder", "weight": 6,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:glass_bottle", "weight": 6,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:nether_wart", "weight": 4,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }] },
+        { "type": "minecraft:item", "name": "waldschatten:nightshade_plant", "weight": 5,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }] },
+        { "type": "minecraft:item", "name": "waldschatten:mandrake_root", "weight": 3 },
+        { "type": "minecraft:item", "name": "waldschatten:witch_hazel_bush", "weight": 4,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }] }
+      ]
+    },
+    {
+      "rolls": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 },
+      "bonus_rolls": 0.0,
+      "entries": [
+        { "type": "minecraft:item", "name": "minecraft:bread", "weight": 10,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 3.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:cookie", "weight": 8,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 5.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:sweet_berries", "weight": 6,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 4.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:mushroom_stew", "weight": 4 },
+        { "type": "minecraft:item", "name": "minecraft:cake", "weight": 1 }
+      ]
+    },
+    {
+      "rolls": 1.0,
+      "bonus_rolls": 0.0,
+      "entries": [
+        { "type": "minecraft:empty", "weight": 10 },
+        { "type": "minecraft:item", "name": "minecraft:gold_nugget", "weight": 6,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 2.0, "max": 7.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:emerald", "weight": 4,
+          "functions": [{ "function": "minecraft:set_count", "count": { "type": "minecraft:uniform", "min": 1.0, "max": 2.0 } }] },
+        { "type": "minecraft:item", "name": "minecraft:potion", "weight": 3,
+          "functions": [{ "function": "minecraft:set_components", "components": { "minecraft:potion_contents": "minecraft:night_vision" } }] },
+        { "type": "minecraft:item", "name": "minecraft:potion", "weight": 2,
+          "functions": [{ "function": "minecraft:set_components", "components": { "minecraft:potion_contents": "minecraft:poison" } }] },
+        { "type": "minecraft:item", "name": "minecraft:enchanted_golden_apple", "weight": 1 }
+      ]
+    },
+    {
+      "rolls": 1.0,
+      "bonus_rolls": 0.0,
+      "conditions": [{ "condition": "minecraft:random_chance", "chance": 0.35 }],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:written_book",
+          "functions": [
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "minecraft:written_book_content": {
+                  "title": "Her Ledger",
+                  "author": "unsigned",
+                  "pages": [
+                    "\"Third night of the thaw.\\n\\nThe wood is honest, whatever they say in the valley. It takes what it is owed and it warns you first. Thorns before teeth.\"",
+                    "\"The children come as far as the stones and no further. Good. I have put nothing there to keep them out. Their own sense does it, and sense is cheaper than a fence.\"",
+                    "\"Torches burn here. They simply do not help. I have watched a man stand inside his own lamplight and call out for someone to bring a light.\"",
+                    "\"A flame the colour of the sky before dawn will hold. Nothing else will. I did not make that rule and I cannot unmake it.\"",
+                    "\"If you are reading this, you have opened a chest in a house that is not yours, in a wood that is not yours, at an hour I would not have chosen.\\n\\nTake the bread. Leave the rest.\""
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
