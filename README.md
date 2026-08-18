@@ -15,7 +15,7 @@ things that hunt you do not wait for evening.
   soil, cairn stone, and an iron lantern that is the only warm light in the biome.
 - **The dark.** At night Waldschatten is pitch black the way the Warden's territory is, and an
   ordinary torch barely dents it. A **soul torch** is the one light that behaves normally, out
-  to the radius a regular torch would have lit in a kinder forest.
+  to nine blocks — as far as a soul flame's own light actually carries.
 - **A witch hut** — a crooked cottage on uneven stilts with a steep roof, a smoking chimney, a
   scarecrow, a fenced herb garden, a cauldron in the yard, and somebody already home.
 - **Five set-pieces** scattered through the wood: a gallows clearing, a standing stone circle,
@@ -48,6 +48,7 @@ node tools/gen-biome.js      # the biome
 node tools/gen-worldgen.js   # features (self-checking)
 node tools/gen-tags.js       # tags
 node tools/gen-structures.js # NBT templates, pools, structures, sets (self-checking)
+node tools/lint-structures.js # every block in every template can survive where it is put
 node tools/contact-sheet.js  # texture proof sheet -> build/texture-contact-sheet.png
 ```
 

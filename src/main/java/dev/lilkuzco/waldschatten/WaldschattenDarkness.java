@@ -1,10 +1,14 @@
 package dev.lilkuzco.waldschatten;
 
 import dev.lilkuzco.waldschatten.worldgen.WaldschattenWorldgen;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
@@ -44,16 +48,73 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
  */
 public final class WaldschattenDarkness {
 
-	/** A regular torch's light level, in blocks — what a soul torch buys you here. */
-	public static final int SOUL_LIGHT_RADIUS = 14;
-	/** Vertical reach of the search. Light sources a player cares about are near their eyes. */
-	private static final int SOUL_LIGHT_HEIGHT = 8;
+	/**
+	 * How far a soul flame holds the dark back, in blocks.
+	 *
+	 * <p>Nine, not the fourteen this once claimed, and the number is forced by physics
+	 * rather than chosen. A soul torch emits light level <b>10</b> (a regular torch emits
+	 * 14), so its light is spent after ten blocks of travel and a player standing further
+	 * off receives nothing from it at all. The old value promised a torch's reach from an
+	 * emitter that cannot produce it, and the cheap test below — "no block light means no
+	 * soul light" — was justified by an invariant that was simply false past nine blocks.
+	 * The symptom was worse than a short radius: any unrelated light source flipped the
+	 * test, so the same soul torch was found at thirteen blocks when an ordinary torch
+	 * happened to be burning nearby and missed when it was not.
+	 *
+	 * <p>Nine is the largest radius for which "the flame lights you" and "the flame counts"
+	 * are the same statement, which is what makes the one-lookup fast path honest — and the
+	 * fast path is the whole performance story, since it answers for every player standing
+	 * in the dark, which is most of them, most of the time.
+	 */
+	public static final int SOUL_LIGHT_RADIUS = 9;
 
 	private static final int SCAN_INTERVAL_TICKS = 10;
-	/** Short, and refreshed constantly, so walking into soul light clears it quickly. */
-	private static final int DARKNESS_DURATION_TICKS = 45;
+	/**
+	 * Comfortably longer than the effect's own 22-tick blend, so a player who is genuinely
+	 * in the dark never sees it begin to fade before it is renewed.
+	 */
+	private static final int DARKNESS_DURATION_TICKS = 60;
+	/** Renew only once it drops this low — three times fewer effect packets than renewing blind. */
+	private static final int REFRESH_BELOW_TICKS = 35;
 	/** How often the *expensive* search may run for a player who has found no soul light. */
 	private static final int FULL_SCAN_INTERVAL_TICKS = 40;
+
+	/**
+	 * Every offset inside the radius, ordered nearest first, packed as x,y,z triples.
+	 *
+	 * <p>A sphere rather than the old cylinder, because the fast path admits any source
+	 * within nine blocks in <em>any</em> direction and a search that cannot see everything
+	 * the gate admits is the same inconsistency in a new place. It is still barely a third
+	 * of the volume the old 14-by-8 cylinder swept.
+	 *
+	 * <p>Nearest-first ordering is what makes the miss cost theoretical: a player who has
+	 * lit a torch to stand by is answered within a few dozen lookups, not three thousand.
+	 * Built once at class load, then read allocation-free forever.
+	 */
+	private static final int[] OFFSETS = buildOffsets();
+
+	private static int[] buildOffsets() {
+		int r = SOUL_LIGHT_RADIUS;
+		List<int[]> found = new ArrayList<>();
+		for (int dx = -r; dx <= r; dx++) {
+			for (int dy = -r; dy <= r; dy++) {
+				for (int dz = -r; dz <= r; dz++) {
+					int d2 = dx * dx + dy * dy + dz * dz;
+					if (d2 <= r * r) {
+						found.add(new int[] { dx, dy, dz, d2 });
+					}
+				}
+			}
+		}
+		found.sort(Comparator.comparingInt(o -> o[3]));
+		int[] packed = new int[found.size() * 3];
+		for (int i = 0; i < found.size(); i++) {
+			packed[i * 3] = found.get(i)[0];
+			packed[i * 3 + 1] = found.get(i)[1];
+			packed[i * 3 + 2] = found.get(i)[2];
+		}
+		return packed;
+	}
 
 	/** Data-driven so a pack can add its own soul flames without touching this class. */
 	public static final TagKey<Block> SOUL_LIGHT =
@@ -68,6 +129,10 @@ public final class WaldschattenDarkness {
 	private static final Map<UUID, Long> LAST_FULL_SCAN = new HashMap<>();
 
 	public static void register() {
+		// Both caches are keyed by player UUID, so a player who logs out while in the wood
+		// at night would otherwise leave an entry behind for the lifetime of the server.
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> forget(handler.getPlayer()));
+
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			if (server.getTickCount() % SCAN_INTERVAL_TICKS != 0) {
 				return;
@@ -105,8 +170,13 @@ public final class WaldschattenDarkness {
 			return;
 		}
 
-		player.addEffect(new MobEffectInstance(
-				MobEffects.DARKNESS, DARKNESS_DURATION_TICKS, 0, false, false));
+		// Renew only when it is running out. Re-adding blind every scan pushed a fresh
+		// effect packet to every affected player several times a second for no visible gain.
+		MobEffectInstance current = player.getEffect(MobEffects.DARKNESS);
+		if (current == null || current.getDuration() < REFRESH_BELOW_TICKS) {
+			player.addEffect(new MobEffectInstance(
+					MobEffects.DARKNESS, DARKNESS_DURATION_TICKS, 0, false, false));
+		}
 	}
 
 	/**
@@ -132,8 +202,14 @@ public final class WaldschattenDarkness {
 		}
 		LAST_SOUL_LIGHT.remove(id);
 
-		// A soul flame inside the radius cannot fail to put *some* block light on the
-		// player, so no block light is proof there is none, for the price of one lookup.
+		// The fast path, and now a sound one: a soul flame emits light 10, so one within
+		// nine blocks necessarily puts at least light 1 on the player. No block light at all
+		// is therefore proof there is no soul flame in range — for a single lookup, which is
+		// what keeps this affordable for every player standing in the dark.
+		//
+		// It also means the exemption follows light rather than line-of-sight distance: a
+		// soul torch walled off from you does not count, which is the behaviour you would
+		// want anyway.
 		if (level.getBrightness(LightLayer.BLOCK, pos) == 0) {
 			return false;
 		}
@@ -146,29 +222,18 @@ public final class WaldschattenDarkness {
 		LAST_FULL_SCAN.put(id, now);
 
 		BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
-		for (int dy = -SOUL_LIGHT_HEIGHT; dy <= SOUL_LIGHT_HEIGHT; dy++) {
-			for (int dx = -SOUL_LIGHT_RADIUS; dx <= SOUL_LIGHT_RADIUS; dx++) {
-				for (int dz = -SOUL_LIGHT_RADIUS; dz <= SOUL_LIGHT_RADIUS; dz++) {
-					if (dx * dx + dz * dz > SOUL_LIGHT_RADIUS * SOUL_LIGHT_RADIUS) {
-						continue;
-					}
-					cursor.set(pos.getX() + dx, pos.getY() + dy, pos.getZ() + dz);
-					if (isSoulLight(level, cursor)) {
-						LAST_SOUL_LIGHT.put(id, cursor.immutable());
-						return true;
-					}
-				}
+		for (int i = 0; i < OFFSETS.length; i += 3) {
+			cursor.set(pos.getX() + OFFSETS[i], pos.getY() + OFFSETS[i + 1], pos.getZ() + OFFSETS[i + 2]);
+			if (isSoulLight(level, cursor)) {
+				LAST_SOUL_LIGHT.put(id, cursor.immutable());
+				return true;
 			}
 		}
 		return false;
 	}
 
 	private static boolean withinReach(BlockPos light, BlockPos player) {
-		int dx = light.getX() - player.getX();
-		int dy = light.getY() - player.getY();
-		int dz = light.getZ() - player.getZ();
-		return Math.abs(dy) <= SOUL_LIGHT_HEIGHT
-				&& dx * dx + dz * dz <= SOUL_LIGHT_RADIUS * SOUL_LIGHT_RADIUS;
+		return light.distSqr(player) <= (double) SOUL_LIGHT_RADIUS * SOUL_LIGHT_RADIUS;
 	}
 
 	private static boolean isSoulLight(ServerLevel level, BlockPos pos) {

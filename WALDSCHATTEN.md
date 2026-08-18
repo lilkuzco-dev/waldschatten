@@ -38,9 +38,15 @@ and the rule turns on exactly that difference:
 - **Look** — the biome's `visual/block_light_tint` is a cold blue (`#128de3`), so every
   flame in the wood reads wrong and only a soul flame looks like it belongs.
 - **Gameplay** — `WaldschattenDarkness` applies the Warden's own `MobEffects.DARKNESS` to
-  survival players in the biome after dark, *unless* a lit soul flame is within 14 blocks —
-  a regular torch's light level, so a soul torch lights the area a torch would have lit in a
-  forest that was not trying to kill you.
+  survival players in the biome after dark, *unless* a lit soul flame is within **9 blocks**.
+
+Nine is forced by physics, not chosen: a soul torch emits light level **10** (a regular torch
+emits 14), so its light is spent after ten blocks and a player standing further off receives
+nothing from it. Nine is the largest radius for which "the flame lights you" and "the flame
+counts" are the same statement — which is what lets the check answer in a **single block
+lookup** for the common case of a player standing in the dark. An earlier version claimed 14
+and was quietly inconsistent: the fast path admitted a soul torch at thirteen blocks only when
+some *unrelated* light happened to be burning nearby.
 
 Soul light sources are the `#waldschatten:soul_light` block tag, so a pack can add its own.
 Creative and spectator players are exempt.
@@ -63,7 +69,14 @@ Per CLAUDE.md rule 9 the ship is not green until they have been **looked at**.
 | `dark_soul_torch` | **the same spot, lit, cold-blue — only the soul torch changed** |
 | `dark_again` | the torch removed; the dark returns, the ordinary torch still useless |
 
-The battery also asserts three things a screenshot cannot:
+The battery also asserts four things a screenshot cannot:
+
+- **`WALDSCHATTEN_CHIMES ... 0 cannot survive where they hang`** — every bone chime the
+  canopy hung can actually stay there. Worldgen writes blocks without neighbour updates, so a
+  block that cannot survive still sits in the world looking correct until the first update
+  reaches it; a screenshot taken at generation time cannot tell the difference and once
+  passed a canopy full of doomed chimes. `canSurvive` can. `tools/lint-structures.js` is the
+  static counterpart for the hand-built templates.
 
 - **`WALDSCHATTEN_PLACEMENT ... contains waldschatten: true (56 biomes in the preset)`** —
   the mixin injection actually took. Asked of the **vanilla overworld preset**, not of the
@@ -76,7 +89,7 @@ The battery also asserts three things a screenshot cannot:
   vanilla-green frames more than once.
 - **`WALDSCHATTEN_LIGHT`** — sweeps 225 floor positions under a closed canopy at noon and
   reports the distribution. Trees are placed randomly, so the figure moves between runs:
-  observed **15–33% of the floor at light 0**, mean sky light 3.6–6.5, with min 0 every time.
+  observed **15–35% of the floor at light 0**, mean sky light 3.6–6.8, with min 0 every time.
   That is the "danger in daylight" beat, measured rather than claimed — and the spread is
   itself the answer to "how dense should the canopy be", which is now a question with a
   number attached instead of a vibe.
@@ -259,7 +272,7 @@ Deliberately **not** built, so nothing here was scope-crept in silently.
   would be one texture and one entry in `gen-assets.js`.
 - **A second spooky biome.** `#waldschatten:is_spooky` exists so a sibling inherits the
   darkness rule and any future content for free.
-- **Canopy density tuning.** 15–33% of the floor at light 0 is a real "danger in daylight"
+- **Canopy density tuning.** 15–35% of the floor at light 0 is a real "danger in daylight"
   beat; whether it should be that or half the wood is a design call the measurement now makes
   answerable. Raising the vegetation `count` above 16 is the dial.
 - **Rarity survey.** Point `empire-worldgen/tools/survey/` at a generated world and count how

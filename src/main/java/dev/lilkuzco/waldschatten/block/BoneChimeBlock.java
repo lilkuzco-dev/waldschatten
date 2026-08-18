@@ -4,6 +4,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.BlockGetter;
@@ -44,10 +45,23 @@ public class BoneChimeBlock extends Block {
 		return SHAPE;
 	}
 
+	/**
+	 * Hangs from a branch, a beam, or the canopy itself.
+	 *
+	 * <p>Leaves are explicitly allowed and that is the whole point of this method.
+	 * {@code LeavesBlock.getBlockSupportShape} returns {@code Shapes.empty()} — which is why
+	 * you cannot put a torch on leaves — so a sturdy-face test rejects every leaf block in
+	 * the game. The only worldgen source of chimes is the {@code attached_to_leaves} tree
+	 * decorator, so a sturdy-only rule condemned every chime the mod has ever placed: written
+	 * during generation without neighbour updates, looking correct, and deleted by the first
+	 * update to reach them. The render battery photographed them in that window and passed.
+	 */
 	@Override
 	protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
 		BlockPos above = pos.above();
-		return level.getBlockState(above).isFaceSturdy(level, above, Direction.DOWN);
+		BlockState aboveState = level.getBlockState(above);
+		return aboveState.is(BlockTags.LEAVES)
+				|| aboveState.isFaceSturdy(level, above, Direction.DOWN);
 	}
 
 	@Override

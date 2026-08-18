@@ -217,6 +217,40 @@ public class WaldschattenRenderTest implements FabricClientGameTest {
 		}
 		context.waitTicks(40);
 
+		// Every chime the canopy hung must be able to SURVIVE where it hangs, not merely be
+		// present. Worldgen writes blocks without neighbour updates, so a block that cannot
+		// survive still sits there looking correct until the first update reaches it — which
+		// is exactly how a screenshot of doomed bone chimes once passed this battery. The
+		// photograph cannot tell the difference; canSurvive can.
+		server.runOnServer(mcServer -> {
+			net.minecraft.server.level.ServerLevel level = mcServer.overworld();
+			if (level.players().isEmpty()) {
+				return;
+			}
+			net.minecraft.core.BlockPos origin = level.players().get(0).blockPosition();
+			int found = 0;
+			int doomed = 0;
+			net.minecraft.core.BlockPos.MutableBlockPos cursor = new net.minecraft.core.BlockPos.MutableBlockPos();
+			for (int dx = -24; dx <= 24; dx++) {
+				for (int dz = -24; dz <= 24; dz++) {
+					for (int dy = -4; dy <= 30; dy++) {
+						cursor.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
+						net.minecraft.world.level.block.state.BlockState state = level.getBlockState(cursor);
+						if (state.is(dev.lilkuzco.waldschatten.WaldschattenBlocks.BONE_CHIME)) {
+							found++;
+							if (!state.canSurvive(level, cursor)) {
+								doomed++;
+							}
+						}
+					}
+				}
+			}
+			dev.lilkuzco.waldschatten.Waldschatten.LOGGER.info(
+					"WALDSCHATTEN_CHIMES hung by the canopy: {} found, {} cannot survive where they hang",
+					found, doomed);
+		});
+		context.waitTicks(10);
+
 		// From outside and above the stand — far enough out that the canopy is a silhouette
 		// rather than the inside of a leaf block.
 		server.runCommand("gamemode spectator @p");
@@ -294,7 +328,10 @@ public class WaldschattenRenderTest implements FabricClientGameTest {
 		context.waitTicks(20);
 
 		server.runCommand("gamemode spectator @p");
-		server.runCommand("execute at @p run tp @p ~1 ~7 ~-16 0 20");
+		// From the FRONT (yaw 180), which is where the door, the stone path, the lantern on
+		// its path stone and the chime under the eave all are. Shooting the back wall
+		// photographs none of them.
+		server.runCommand("execute at @p run tp @p ~1 ~7 ~19 180 20");
 		context.waitTicks(60);
 		context.takeScreenshot("waldschatten_witch_hut");
 	}

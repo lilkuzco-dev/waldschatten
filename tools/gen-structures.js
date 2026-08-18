@@ -69,8 +69,9 @@ function witchHut() {
 	// --- door, south face, with a lantern beside it and a chime above
 	t.set(6, FLOOR + 1, Z1, "minecraft:dark_oak_door", { facing: "south", half: "lower", hinge: "left", open: "false", powered: "false" });
 	t.set(6, FLOOR + 2, Z1, "minecraft:dark_oak_door", { facing: "south", half: "upper", hinge: "left", open: "false", powered: "false" });
-	t.set(7, FLOOR + 3, Z1 + 1, LANTERN, { hanging: "false", waterlogged: "false" });
-	t.set(5, FLOOR + 5, Z1, CHIME);
+	// The lantern stands on the path stone at (7,0,10). It used to float at (7,5,10) with
+	// nothing under it, so it fell the moment the hut was placed.
+	t.set(7, 1, 10, LANTERN, { hanging: "false", waterlogged: "false" });
 
 	// --- windows: one glazed and askew, one boarded over
 	t.set(X0, FLOOR + 2, 6, "minecraft:glass_pane", { east: "false", north: "true", south: "true", waterlogged: "false", west: "false" });
@@ -112,8 +113,18 @@ function witchHut() {
 	t.set(5, FLOOR + 1, 8, "minecraft:candle", { candles: "3", lit: "true", waterlogged: "false" });
 	t.set(4, FLOOR + 1, 8, "minecraft:flower_pot");
 	t.set(8, FLOOR + 1, 6, "minecraft:barrel", { facing: "up", open: "false" });
-	// herbs drying under the rafters
-	for (const z of [5, 6, 7]) t.set(6, FLOOR + 5, z, `${NS}:witch_hazel_bush`);
+	// Herbs drying on the shelves. They were at y=FLOOR+5, which is the roof's underside —
+	// written AFTER the roof, so they punched three holes in the ceiling and then fell,
+	// having nothing but room air beneath them. Standing on the furniture they survive and
+	// still read as bundles put by to dry.
+	t.set(4, FLOOR + 2, 6, `${NS}:witch_hazel_bush`);   // on the crafting table
+	t.set(4, FLOOR + 2, 7, `${NS}:witch_hazel_bush`);   // on the bookshelf
+	t.set(8, FLOOR + 2, 6, `${NS}:witch_hazel_bush`);   // on the barrel
+
+	// The chime, hung under the front eave. It must be set AFTER the roof: at its old
+	// position (5, 7, 9) the roof's own underside planks were written over it later, so the
+	// hut shipped with no chime at all — a block silently overwritten leaves no trace.
+	t.set(3, roofY - 1, 10, CHIME);
 
 	// --- the yard
 	// cauldron over a fire, out front, where you see it before you see the door
@@ -284,8 +295,11 @@ function main() {
 
 	write(path.join(WG, "template_pool", "witch_hut", "start.json"),
 		pool("minecraft:empty", [single(`${NS}:witch_hut/witch_hut`)]));
-	// "empty" as fallback with weight on the real annexes means the annex is genuinely
-	// optional — some huts get one, some do not, which is the variation the brief wants.
+	// NOTE: `fallback` is the pool used when jigsaw depth is EXHAUSTED, not a weighted
+	// "place nothing" option — so with these two elements an annex attaches to each socket
+	// whenever it physically fits, which on flat ground is nearly always. The variation
+	// between spawns is therefore WHICH annex, not whether there is one. To make them
+	// genuinely optional, add a weighted `minecraft:empty_pool_element` entry here.
 	write(path.join(WG, "template_pool", "witch_hut", "annex.json"),
 		pool("minecraft:empty", [
 			single(`${NS}:witch_hut/annex_woodpile`),
