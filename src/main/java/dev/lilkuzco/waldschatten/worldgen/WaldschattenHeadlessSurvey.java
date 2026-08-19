@@ -19,6 +19,8 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 
@@ -150,9 +152,17 @@ public final class WaldschattenHeadlessSurvey {
 		return cache.computeIfAbsent(cell, ignored -> {
 			int blockX = (cell.x() << 4) + 8;
 			int blockZ = (cell.z() << 4) + 8;
-			level.getChunkAt(new BlockPos(blockX, SURVEY_Y, blockZ));
-			int ground = level.getHeight(
-					Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ) - 1;
+			ChunkAccess chunk = level.getChunk(cell.x(), cell.z(), ChunkStatus.FULL, true);
+			if (!chunk.hasPrimedHeightmap(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES)) {
+				Heightmap.primeHeightmaps(
+						chunk, Set.of(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES));
+			}
+			int ground = chunk.getHeight(
+					Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX & 15, blockZ & 15) - 1;
+			if (ground <= level.getMinY()) {
+				throw new AssertionError("Terrain heightmap stayed at the world-floor sentinel in "
+						+ cell + " (" + ground + ")");
+			}
 			BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(blockX, ground, blockZ);
 			while (ground > level.getMinY() && level.getBlockState(cursor).is(BlockTags.LOGS)) {
 				ground--;
