@@ -69,31 +69,34 @@ public final class WaldschattenHeadlessSurvey {
 
 		int biomeDistance = (int) Math.sqrt(nearest.getFirst().distSqr(spawn));
 		int hutDistance = (int) Math.sqrt(found.getFirst().distSqr(spawn));
-		int minGround = Integer.MAX_VALUE;
-		int maxGround = Integer.MIN_VALUE;
-		int terrainSamples = 0;
-		BlockPos centre = nearest.getFirst();
-		for (int x = centre.getX() - 64; x <= centre.getX() + 64; x += 16) {
-			for (int z = centre.getZ() - 64; z <= centre.getZ() + 64; z += 16) {
-				Holder<Biome> biome = source.getNoiseBiome(x >> 2, SURVEY_Y >> 2, z >> 2, sampler);
-				if (!biome.is(WaldschattenWorldgen.WALDSCHATTEN)) {
-					continue;
-				}
-				int ground = level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z);
-				minGround = Math.min(minGround, ground);
-				maxGround = Math.max(maxGround, ground);
-				terrainSamples++;
-			}
-		}
-		int relief = terrainSamples == 0 ? -1 : maxGround - minGround;
 		boolean liveTerrainStack = FabricLoader.getInstance().isModLoaded("terralith")
 				&& FabricLoader.getInstance().isModLoaded("empire_worldgen");
-		if (liveTerrainStack && terrainSamples < 4) {
-			throw new AssertionError("Could not collect a meaningful Waldschatten terrain sample for seed " + seed);
-		}
-		if (liveTerrainStack && relief > 24) {
-			throw new AssertionError("Waldschatten terrain is too steep for seed " + seed
-					+ ": " + relief + " blocks of relief across a 128-block sample");
+		int relief = -1;
+		if (liveTerrainStack) {
+			int minGround = Integer.MAX_VALUE;
+			int maxGround = Integer.MIN_VALUE;
+			int terrainSamples = 0;
+			BlockPos centre = nearest.getFirst();
+			for (int x = centre.getX() - 64; x <= centre.getX() + 64; x += 32) {
+				for (int z = centre.getZ() - 64; z <= centre.getZ() + 64; z += 32) {
+					Holder<Biome> biome = source.getNoiseBiome(x >> 2, SURVEY_Y >> 2, z >> 2, sampler);
+					if (!biome.is(WaldschattenWorldgen.WALDSCHATTEN)) {
+						continue;
+					}
+					int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+					minGround = Math.min(minGround, ground);
+					maxGround = Math.max(maxGround, ground);
+					terrainSamples++;
+				}
+			}
+			if (terrainSamples < 4) {
+				throw new AssertionError("Could not collect a meaningful Waldschatten terrain sample for seed " + seed);
+			}
+			relief = maxGround - minGround;
+			if (relief > 24) {
+				throw new AssertionError("Waldschatten terrain is too steep for seed " + seed
+						+ ": " + relief + " blocks of relief across a 128-block sample");
+			}
 		}
 		Waldschatten.LOGGER.info(
 				"WALDSCHATTEN_HEADLESS PASS seed={} spawn={} biomes={} samples={} waldschatten={} ({}%) "

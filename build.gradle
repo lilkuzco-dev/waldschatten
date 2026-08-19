@@ -69,10 +69,11 @@ tasks.matching { it.name in ['runHeadlessSurvey', 'runHeadlessTerralithSurvey'] 
 		delete new File(runDir, 'world')
 		runDir.mkdirs()
 		new File(runDir, 'eula.txt').text = "# throwaway headless release survey\neula=true\n"
-		new File(runDir, 'server.properties').text =
-				"online-mode=false\n" +
-				"generate-structures=true\n" +
-				"level-seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}\n" +
+			new File(runDir, 'server.properties').text =
+					"online-mode=false\n" +
+					"generate-structures=true\n" +
+					"max-tick-time=-1\n" +
+					"level-seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}\n" +
 				"level-name=world\n"
 	}
 }
