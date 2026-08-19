@@ -14,6 +14,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
 
 /**
@@ -35,6 +36,8 @@ public final class WaldschattenWorldgen {
 
 	public static final ResourceKey<Biome> WALDSCHATTEN =
 			ResourceKey.create(Registries.BIOME, Waldschatten.id("waldschatten"));
+	public static final ResourceKey<Structure> WITCH_HUT =
+			ResourceKey.create(Registries.STRUCTURE, Waldschatten.id("witch_hut"));
 
 	public static final StructurePlacementType<WaldschattenPatchPlacement> PATCH_ANCHOR_PLACEMENT =
 			Registry.register(

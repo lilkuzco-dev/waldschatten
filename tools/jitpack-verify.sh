@@ -14,7 +14,7 @@ curl -fsSL 'https://cdn.modrinth.com/data/XaDC71GB/versions/V3XWhM8r/lithostitch
 curl -fsSL 'https://github.com/lilkuzco-dev/empire-worldgen/releases/download/v0.1.0/empire_worldgen-0.1.0.jar' \
 	-o "$terralith_mods/empire_worldgen-0.1.0.jar"
 
-seeds=(0 1 -1 8675309 -160353759327030922 9223372036854775807)
+seeds=(0 1 -1 8675309 -160353759327030922 9223372036854775807 -7237218149412987956)
 for seed in "${seeds[@]}"; do
 	WALDSCHATTEN_SURVEY_SEED="$seed" \
 		timeout 5m ./gradlew runHeadlessSurvey --no-daemon --console=plain

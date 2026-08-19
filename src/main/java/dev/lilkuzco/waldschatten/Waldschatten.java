@@ -2,6 +2,7 @@ package dev.lilkuzco.waldschatten;
 
 import dev.lilkuzco.waldschatten.worldgen.WaldschattenWorldgen;
 import dev.lilkuzco.waldschatten.worldgen.WaldschattenHeadlessSurvey;
+import dev.lilkuzco.waldschatten.worldgen.WaldschattenSpawnAnchor;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
@@ -31,6 +32,7 @@ public class Waldschatten implements ModInitializer {
 		WaldschattenTab.register();
 		WaldschattenWorldgen.register();
 		WaldschattenDarkness.register();
+		WaldschattenSpawnAnchor.register();
 
 		if (Boolean.getBoolean("waldschatten.headless.survey")) {
 			ServerLifecycleEvents.SERVER_STARTED.register(server -> {

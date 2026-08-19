@@ -31,19 +31,27 @@ public final class WaldschattenPatchPlacement extends RandomSpreadStructurePlace
 
 	@Override
 	protected boolean isPlacementChunk(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
-		return isWaldschatten(state, chunkX, chunkZ)
-				&& !isWaldschatten(state, chunkX - 1, chunkZ)
-				&& !isWaldschatten(state, chunkX, chunkZ - 1);
-	}
-
-	private static boolean isWaldschatten(ChunkGeneratorStructureState state, int chunkX, int chunkZ) {
 		BiomeSource source = ((ChunkGeneratorStructureStateAccessor) (Object) state)
 				.waldschatten$getBiomeSource();
+		return isPatchAnchor(source, state.randomState().sampler(), chunkX, chunkZ);
+	}
+
+	public static boolean isPatchAnchor(
+			BiomeSource source, net.minecraft.world.level.biome.Climate.Sampler sampler,
+			int chunkX, int chunkZ) {
+		return isWaldschatten(source, sampler, chunkX, chunkZ)
+				&& !isWaldschatten(source, sampler, chunkX - 1, chunkZ)
+				&& !isWaldschatten(source, sampler, chunkX, chunkZ - 1);
+	}
+
+	private static boolean isWaldschatten(
+			BiomeSource source, net.minecraft.world.level.biome.Climate.Sampler sampler,
+			int chunkX, int chunkZ) {
 		return source.getNoiseBiome(
 				(chunkX << 2) + 2,
 				SURFACE_QUART_Y,
 				(chunkZ << 2) + 2,
-				state.randomState().sampler()).is(WaldschattenWorldgen.WALDSCHATTEN);
+				sampler).is(WaldschattenWorldgen.WALDSCHATTEN);
 	}
 
 	@Override
