@@ -1,7 +1,9 @@
 package dev.lilkuzco.waldschatten;
 
 import dev.lilkuzco.waldschatten.worldgen.WaldschattenWorldgen;
+import dev.lilkuzco.waldschatten.worldgen.WaldschattenHeadlessSurvey;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,15 @@ public class Waldschatten implements ModInitializer {
 		WaldschattenTab.register();
 		WaldschattenWorldgen.register();
 		WaldschattenDarkness.register();
+
+		if (Boolean.getBoolean("waldschatten.headless.survey")) {
+			ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+				long seed = Long.getLong("waldschatten.survey.seed", 0L);
+				WaldschattenHeadlessSurvey.run(server.overworld(), seed);
+				LOGGER.info("WALDSCHATTEN_HEADLESS all release assertions passed; stopping survey server.");
+				server.halt(false);
+			});
+		}
 
 		// Every block that a player can hold must appear in the tab. A block registered
 		// and then forgotten here is invisible in creative and effectively unshipped, so

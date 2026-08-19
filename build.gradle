@@ -34,6 +34,18 @@ loom {
 			vmArg "-Dwaldschatten.survey.only=true"
 			runDir "build/run-terralith"
 		}
+		headlessSurvey {
+			inherit server
+			vmArg "-Dwaldschatten.headless.survey=true"
+			vmArg "-Dwaldschatten.survey.seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}"
+			runDir "build/run-headless-survey"
+		}
+		headlessTerralithSurvey {
+			inherit server
+			vmArg "-Dwaldschatten.headless.survey=true"
+			vmArg "-Dwaldschatten.survey.seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}"
+			runDir "build/run-headless-terralith"
+		}
 	}
 }
 
@@ -46,6 +58,44 @@ tasks.matching { it.name == 'runGametest' }.configureEach {
 		new File(runDir, 'eula.txt').text =
 				"# written by the gametest run config; build/run-gametest is disposable\n" +
 				"eula=true\n"
+	}
+}
+
+tasks.matching { it.name in ['runHeadlessSurvey', 'runHeadlessTerralithSurvey'] }.configureEach {
+	doFirst {
+		def runDir = it.name == 'runHeadlessSurvey'
+				? file('build/run-headless-survey')
+				: file('build/run-headless-terralith')
+		delete new File(runDir, 'world')
+		runDir.mkdirs()
+		new File(runDir, 'eula.txt').text = "# throwaway headless release survey\neula=true\n"
+		new File(runDir, 'server.properties').text =
+				"online-mode=false\n" +
+				"generate-structures=true\n" +
+				"level-seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}\n" +
+				"level-name=world\n"
+	}
+}
+
+tasks.matching { it.name == 'runHeadlessTerralithSurvey' }.configureEach {
+	doFirst {
+		def modsDir = file('build/run-headless-terralith/mods')
+		modsDir.mkdirs()
+		def source = System.getenv('WALDSCHATTEN_TERRALITH_MODS')
+		if (!source) {
+			throw new GradleException('runHeadlessTerralithSurvey requires WALDSCHATTEN_TERRALITH_MODS')
+		}
+		def wanted = ['Terralith', 'lithostitched']
+		def found = []
+		file(source).listFiles()?.each { f ->
+			if (f.name.endsWith('.jar') && wanted.any { f.name.toLowerCase().startsWith(it.toLowerCase()) }) {
+				new File(modsDir, f.name).bytes = f.bytes
+				found << f.name
+			}
+		}
+		if (found.size() < 2) {
+			throw new GradleException("Headless Terralith survey found only ${found} in ${source}")
+		}
 	}
 }
 
@@ -110,16 +160,10 @@ jar {
 	}
 }
 
-tasks.register('verificationScreenshotsJar', Jar) {
-	archiveClassifier = 'verification-screenshots'
-	from(layout.buildDirectory.dir('run-gametest/screenshots'))
-}
-
 publishing {
 	publications {
 		create("mavenJava", MavenPublication) {
 			from components.java
-			artifact tasks.named('verificationScreenshotsJar')
 		}
 	}
 	repositories {
