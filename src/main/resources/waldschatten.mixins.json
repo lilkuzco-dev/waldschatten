@@ -3,6 +3,7 @@
 	"minVersion": "0.8",
 	"package": "dev.lilkuzco.waldschatten.mixin",
 	"mixins": [
+		"ChunkGeneratorStructureStateAccessor",
 		"MultiNoiseBiomeSourceMixin",
 		"MultiNoiseBiomeSourceParameterListMixin"
 	],

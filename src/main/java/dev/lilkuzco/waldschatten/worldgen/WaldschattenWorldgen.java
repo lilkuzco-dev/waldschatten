@@ -7,11 +7,14 @@ import java.util.List;
 import java.util.Optional;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.levelgen.structure.placement.StructurePlacementType;
 
 /**
  * Where Waldschatten sits in the world.
@@ -41,6 +44,12 @@ public final class WaldschattenWorldgen {
 	public static final ResourceKey<Biome> WALDSCHATTEN =
 			ResourceKey.create(Registries.BIOME, Waldschatten.id("waldschatten"));
 
+	public static final StructurePlacementType<WaldschattenPatchPlacement> PATCH_ANCHOR_PLACEMENT =
+			Registry.register(
+					BuiltInRegistries.STRUCTURE_PLACEMENT,
+					Waldschatten.id("patch_anchor"),
+					() -> WaldschattenPatchPlacement.CODEC);
+
 	// ---------------------------------------------------------------------------
 	// Claiming a slice, rather than asking nicely for one.
 	//
@@ -61,16 +70,16 @@ public final class WaldschattenWorldgen {
 	// temperature index 2, span -0.15..0.2, and those parameters described index 3 — which
 	// is jungle's row of MIDDLE_BIOMES, not dark forest's.)
 	//
-	// So instead of competing with dark forest, Waldschatten TAKES a defined piece of it:
-	// every dark forest entry vanilla emits on the hilly erosion band becomes Waldschatten
-	// instead. That is a real, bounded, explainable slice — "the dark forest that grows on
-	// broken ground" — it inherits dark forest's whole climate envelope, and its frequency
-	// is a known fraction of a biome whose frequency is already known.
+	// So instead of competing with forest biomes, Waldschatten TAKES a defined piece of
+	// them: the high-erosion lowland slice of ordinary forest and dark forest. In Minecraft
+	// terrain terms, high erosion means flat or gently rolling ground. Splitting the point
+	// is essential: replacing a whole point merely because it overlaps the desired range
+	// also steals the mountain-shaped part of broad Terralith points.
 	// ---------------------------------------------------------------------------
 
-	/** Erosion band 2 (-0.375 .. -0.2225): vanilla's hilly, broken ground. */
-	private static final long HILLY_MIN = Climate.quantizeCoord(-0.375F);
-	private static final long HILLY_MAX = Climate.quantizeCoord(-0.2225F);
+	/** Vanilla's high-erosion lowlands: flat first, with enough gentle variation to look natural. */
+	static final long LOWLAND_MIN = Climate.quantizeCoord(0.05F);
+	static final long LOWLAND_MAX = Climate.quantizeCoord(1.0F);
 
 	/**
 	 * A biome lookup, borrowed from whoever last built a multi-noise parameter list.
@@ -85,9 +94,9 @@ public final class WaldschattenWorldgen {
 	/**
 	 * Returns the list with our slice claimed out of it, or the list untouched.
 	 *
-	 * <p>Every dark forest entry that overlaps the hilly erosion band becomes Waldschatten.
-	 * Overlap rather than exact equality on purpose: vanilla emits that band both alone and
-	 * spanned together with its neighbour, and a mod's list may be shaped differently again.
+	 * <p>Only the intersection with the lowland erosion band becomes Waldschatten. Any part
+	 * below or above that intersection is re-emitted with its original biome, so a broad
+	 * Terralith point cannot drag mountain terrain into Waldschatten with it.
 	 */
 	public static Climate.ParameterList<Holder<Biome>> claimIn(Climate.ParameterList<Holder<Biome>> original) {
 		HolderGetter<Biome> lookup = biomeLookup;
@@ -103,39 +112,65 @@ public final class WaldschattenWorldgen {
 		}
 
 		List<Pair<Climate.ParameterPoint, Holder<Biome>>> claimed = new ArrayList<>();
-		int taken = 0;
-		int darkForest = 0;
+		int slices = 0;
+		int candidates = 0;
 		for (Pair<Climate.ParameterPoint, Holder<Biome>> entry : original.values()) {
-			if (entry.getSecond().is(Biomes.DARK_FOREST)) {
-				darkForest++;
-			}
-			if (entry.getSecond().is(Biomes.DARK_FOREST) && overlapsHillyErosion(entry.getFirst())) {
-				claimed.add(Pair.of(entry.getFirst(), ours.get()));
-				taken++;
-			} else {
+			if (!isForestClimate(entry.getSecond())) {
 				claimed.add(entry);
+				continue;
+			}
+
+			candidates++;
+			Climate.ParameterPoint point = entry.getFirst();
+			long intersectionMin = Math.max(point.erosion().min(), LOWLAND_MIN);
+			long intersectionMax = Math.min(point.erosion().max(), LOWLAND_MAX);
+			if (intersectionMin > intersectionMax) {
+				claimed.add(entry);
+				continue;
+			}
+
+			// Climate ranges are inclusive. The +/- 1 keeps the three slices disjoint while
+			// preserving every representable coordinate from the source point.
+			if (point.erosion().min() < intersectionMin) {
+				claimed.add(Pair.of(withErosion(point, point.erosion().min(), intersectionMin - 1), entry.getSecond()));
+			}
+			claimed.add(Pair.of(withErosion(point, intersectionMin, intersectionMax), ours.get()));
+			slices++;
+			if (intersectionMax < point.erosion().max()) {
+				claimed.add(Pair.of(withErosion(point, intersectionMax + 1, point.erosion().max()), entry.getSecond()));
 			}
 		}
 
-		if (taken == 0) {
-			// Only worth a warning if there was dark forest here to claim from. This runs for
-			// EVERY multi-noise source, and the Nether has five entries and no dark forest —
-			// warning about that is noise that trains people to ignore the warning that
-			// matters, which is a dark forest we somehow failed to take a slice of.
-			if (darkForest > 0) {
+		if (slices == 0) {
+			// This runs for every multi-noise source. The Nether has no forest entries, so it
+			// should stay quiet; a forest-bearing source with no usable lowland slice is news.
+			if (candidates > 0) {
 				Waldschatten.LOGGER.warn(
-						"Waldschatten claimed NOTHING from a source with {} dark forest entries — the "
-								+ "biome will not generate in this world.", darkForest);
+						"Waldschatten claimed NOTHING from a source with {} forest climate entries — the "
+								+ "biome will not generate in this world.", candidates);
 			}
 			return original;
 		}
-		Waldschatten.LOGGER.info("Waldschatten claimed {} of {} climate entries from this world's biome source.",
-				taken, original.values().size());
+		Waldschatten.LOGGER.info(
+				"Waldschatten claimed {} exact lowland slices from {} forest climate entries "
+						+ "({} source entries became {} entries after lossless splitting).",
+				slices, candidates, original.values().size(), claimed.size());
 		return new Climate.ParameterList<>(claimed);
 	}
 
-	private static boolean overlapsHillyErosion(Climate.ParameterPoint point) {
-		return point.erosion().min() <= HILLY_MAX && point.erosion().max() >= HILLY_MIN;
+	private static boolean isForestClimate(Holder<Biome> biome) {
+		return biome.is(Biomes.DARK_FOREST) || biome.is(Biomes.FOREST);
+	}
+
+	static Climate.ParameterPoint withErosion(Climate.ParameterPoint point, long min, long max) {
+		return new Climate.ParameterPoint(
+				point.temperature(),
+				point.humidity(),
+				point.continentalness(),
+				new Climate.Parameter(min, max),
+				point.depth(),
+				point.weirdness(),
+				point.offset());
 	}
 
 	public static void register() {
@@ -144,8 +179,8 @@ public final class WaldschattenWorldgen {
 
 	private static void logPlacement() {
 		Waldschatten.LOGGER.info(
-				"Waldschatten will claim dark-forest points on the hilly erosion band directly "
-						+ "from each multi-noise biome source. Sources without an overlapping dark-forest "
+				"Waldschatten will claim exact flat/gentle lowland slices from forest climates "
+						+ "in each multi-noise biome source. Sources without an overlapping forest "
 						+ "entry remain unchanged.");
 	}
 

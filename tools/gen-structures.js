@@ -430,10 +430,11 @@ function main() {
 	}
 
 	// --- structure sets -----------------------------------------------------
-	// Rarer than vanilla's swamp hut (spacing 32 / separation 8): finding one should be
-	// an event, and the biome is already rare on top of this.
+	// One deterministic north-west anchor per contiguous biome patch (occasionally more
+	// for a concave patch). The custom placement remains a RandomSpread subclass with a
+	// 1x1 grid so vanilla /locate can enumerate it, but its final predicate is not random.
 	write(path.join(WG, "structure_set", "witch_huts.json"), {
-		placement: { type: "minecraft:random_spread", salt: 793214077, spacing: 44, separation: 17 },
+		placement: { type: `${NS}:patch_anchor` },
 		structures: [{ structure: `${NS}:witch_hut`, weight: 1 }],
 	});
 

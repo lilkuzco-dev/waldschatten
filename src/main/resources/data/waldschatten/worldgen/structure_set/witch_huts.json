@@ -1,9 +1,6 @@
 {
   "placement": {
-    "type": "minecraft:random_spread",
-    "salt": 793214077,
-    "spacing": 44,
-    "separation": 17
+    "type": "waldschatten:patch_anchor"
   },
   "structures": [
     {
