@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import dev.lilkuzco.waldschatten.Waldschatten;
 import java.util.HashMap;
 import java.util.Map;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -14,6 +15,7 @@ import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 
 /** Server-only release survey, enabled by a system property and never active in normal play. */
@@ -67,11 +69,37 @@ public final class WaldschattenHeadlessSurvey {
 
 		int biomeDistance = (int) Math.sqrt(nearest.getFirst().distSqr(spawn));
 		int hutDistance = (int) Math.sqrt(found.getFirst().distSqr(spawn));
+		int minGround = Integer.MAX_VALUE;
+		int maxGround = Integer.MIN_VALUE;
+		int terrainSamples = 0;
+		BlockPos centre = nearest.getFirst();
+		for (int x = centre.getX() - 64; x <= centre.getX() + 64; x += 16) {
+			for (int z = centre.getZ() - 64; z <= centre.getZ() + 64; z += 16) {
+				Holder<Biome> biome = source.getNoiseBiome(x >> 2, SURVEY_Y >> 2, z >> 2, sampler);
+				if (!biome.is(WaldschattenWorldgen.WALDSCHATTEN)) {
+					continue;
+				}
+				int ground = level.getHeight(Heightmap.Types.OCEAN_FLOOR_WG, x, z);
+				minGround = Math.min(minGround, ground);
+				maxGround = Math.max(maxGround, ground);
+				terrainSamples++;
+			}
+		}
+		int relief = terrainSamples == 0 ? -1 : maxGround - minGround;
+		boolean liveTerrainStack = FabricLoader.getInstance().isModLoaded("terralith")
+				&& FabricLoader.getInstance().isModLoaded("empire_worldgen");
+		if (liveTerrainStack && terrainSamples < 4) {
+			throw new AssertionError("Could not collect a meaningful Waldschatten terrain sample for seed " + seed);
+		}
+		if (liveTerrainStack && relief > 24) {
+			throw new AssertionError("Waldschatten terrain is too steep for seed " + seed
+					+ ": " + relief + " blocks of relief across a 128-block sample");
+		}
 		Waldschatten.LOGGER.info(
 				"WALDSCHATTEN_HEADLESS PASS seed={} spawn={} biomes={} samples={} waldschatten={} ({}%) "
-						+ "dark_forest={} forest={} nearest={} blocks hut={} blocks",
+						+ "dark_forest={} forest={} nearest={} blocks hut={} blocks relief={} blocks",
 				seed, spawn, source.possibleBiomes().size(), samples, ours, pct(ours, samples),
-				darkForest, forest, biomeDistance, hutDistance);
+				darkForest, forest, biomeDistance, hutDistance, relief);
 	}
 
 	private static String pct(int n, int total) {

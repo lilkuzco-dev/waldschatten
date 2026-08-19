@@ -9,6 +9,8 @@ curl -fsSL 'https://cdn.modrinth.com/data/8oi3bsk5/versions/OxfI2n80/Terralith_2
 	-o "$terralith_mods/Terralith_26.2_v2.6.4.jar"
 curl -fsSL 'https://cdn.modrinth.com/data/XaDC71GB/versions/V3XWhM8r/lithostitched-1.8.0%2Bbeta3-fabric-26.2.jar' \
 	-o "$terralith_mods/lithostitched-1.8.0+beta3-fabric-26.2.jar"
+curl -fsSL 'https://github.com/lilkuzco-dev/empire-worldgen/releases/download/v0.1.0/empire_worldgen-0.1.0.jar' \
+	-o "$terralith_mods/empire_worldgen-0.1.0.jar"
 
 seeds=(0 1 -1 8675309 -160353759327030922 9223372036854775807)
 for seed in "${seeds[@]}"; do

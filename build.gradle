@@ -85,7 +85,7 @@ tasks.matching { it.name == 'runHeadlessTerralithSurvey' }.configureEach {
 		if (!source) {
 			throw new GradleException('runHeadlessTerralithSurvey requires WALDSCHATTEN_TERRALITH_MODS')
 		}
-		def wanted = ['Terralith', 'lithostitched']
+		def wanted = ['Terralith', 'lithostitched', 'empire_worldgen']
 		def found = []
 		file(source).listFiles()?.each { f ->
 			if (f.name.endsWith('.jar') && wanted.any { f.name.toLowerCase().startsWith(it.toLowerCase()) }) {
@@ -93,7 +93,7 @@ tasks.matching { it.name == 'runHeadlessTerralithSurvey' }.configureEach {
 				found << f.name
 			}
 		}
-		if (found.size() < 2) {
+		if (found.size() < 3) {
 			throw new GradleException("Headless Terralith survey found only ${found} in ${source}")
 		}
 	}
