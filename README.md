@@ -65,8 +65,11 @@ Two survey tasks answer "does this biome actually turn up":
 ./gradlew runTerralithSurvey    # the same survey with real Terralith + lithostitched loaded
 ```
 
-The survey checks six reproducible seeds and fails if Waldschatten is more than 1,000 blocks
-from the real world spawn or if its patch-anchored witch hut cannot be located.
+The release survey checks six reproducible seeds on vanilla and on the exact live terrain
+stack. Version 0.1.1 passed all 12 worlds: Waldschatten was 0–607 blocks from spawn on vanilla
+and 32–289 blocks away with Terralith, lithostitched, and Empire Worldgen. It also fails if a
+patch-anchored witch hut cannot be located or if a connected live-stack patch has more than
+24 blocks of relief.
 
 See [WALDSCHATTEN.md](WALDSCHATTEN.md) for the design rulings, the file map, the phase 2 list,
 and a table of everything 1.21-era worldgen knowledge gets wrong on 26.2.

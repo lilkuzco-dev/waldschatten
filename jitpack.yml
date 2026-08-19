@@ -3,4 +3,4 @@ before_install:
   - sdk use java 25-open
 
 install:
-  - ./tools/jitpack-verify.sh
+  - ./gradlew clean test build publishToMavenLocal --no-daemon --console=plain
