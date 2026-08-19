@@ -31,7 +31,7 @@ public final class WaldschattenHutWitch {
 	}
 
 	public static boolean isHexmother(Witch witch) {
-		return witch.getTags().contains(HEXMOTHER_TAG);
+		return witch.entityTags().contains(HEXMOTHER_TAG);
 	}
 
 	private static void makeHexmother(Witch witch) {
