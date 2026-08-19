@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export GRADLE_USER_HOME="$PWD/.jitpack-gradle-home"
+
 ./gradlew clean test build --no-daemon --console=plain
 
 terralith_mods="$PWD/build/jitpack-terralith-mods"
