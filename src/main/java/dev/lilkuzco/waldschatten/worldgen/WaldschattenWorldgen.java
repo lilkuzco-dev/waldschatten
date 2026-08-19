@@ -73,12 +73,12 @@ public final class WaldschattenWorldgen {
 	// ---------------------------------------------------------------------------
 
 	/** Vanilla's high-erosion lowlands: flat first, with enough gentle variation to look natural. */
-	static final long LOWLAND_MIN = Climate.quantizeCoord(0.05F);
-	static final long LOWLAND_MAX = Climate.quantizeCoord(0.40F);
+	static final long LOWLAND_MIN = Climate.quantizeCoord(0.565F);
+	static final long LOWLAND_MAX = Climate.quantizeCoord(1.0F);
 	static final long LOWLAND_CONTINENTAL_MIN = Climate.quantizeCoord(-0.11F);
 	static final long LOWLAND_CONTINENTAL_MAX = Climate.quantizeCoord(0.03F);
-	static final long LOWLAND_WEIRDNESS_MIN = Climate.quantizeCoord(-0.26666668F);
-	static final long LOWLAND_WEIRDNESS_MAX = Climate.quantizeCoord(0.26666668F);
+	static final long LOWLAND_WEIRDNESS_MIN = Climate.quantizeCoord(-1.0F);
+	static final long LOWLAND_WEIRDNESS_MAX = Climate.quantizeCoord(1.0F);
 
 	/**
 	 * A biome lookup, borrowed from whoever last built a multi-noise parameter list.
@@ -182,7 +182,7 @@ public final class WaldschattenWorldgen {
 	}
 
 	private static boolean isFlatSourceClimate(Holder<Biome> biome) {
-		return biome.is(Biomes.PLAINS);
+		return biome.is(Biomes.SWAMP);
 	}
 
 	static Climate.ParameterPoint withErosion(Climate.ParameterPoint point, long min, long max) {
@@ -224,7 +224,7 @@ public final class WaldschattenWorldgen {
 
 	private static void logPlacement() {
 		Waldschatten.LOGGER.info(
-				"Waldschatten will claim exact flat/gentle lowland slices from plains climates "
+				"Waldschatten will claim exact flat/gentle lowland slices from swamp climates "
 						+ "in each multi-noise biome source. Sources without an overlapping forest "
 						+ "entry remain unchanged.");
 	}
