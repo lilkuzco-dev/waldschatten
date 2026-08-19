@@ -35,7 +35,11 @@ public final class WaldschattenSpawnAnchor {
 					+ " blocks; refusing to leave the 1,000-block spawn promise silently broken");
 		}
 		BlockPos biome = fallback.getFirst();
+		level.getChunkAt(biome);
 		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, biome.getX(), biome.getZ());
+		if (y <= level.getMinY()) {
+			y = biome.getY();
+		}
 		BlockPos corrected = new BlockPos(biome.getX(), y, biome.getZ());
 		level.setRespawnData(LevelData.RespawnData.of(level.dimension(), corrected, 0.0F, 0.0F));
 		Waldschatten.LOGGER.warn(

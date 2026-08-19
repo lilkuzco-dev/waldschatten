@@ -52,6 +52,10 @@ public final class WaldschattenHeadlessSurvey {
 		int darkForest = counts.getOrDefault(Biomes.DARK_FOREST, 0);
 		int forest = counts.getOrDefault(Biomes.FOREST, 0);
 		BlockPos spawn = level.getRespawnData().pos();
+		if (spawn.getY() <= level.getMinY()) {
+			throw new AssertionError("Default spawn is at or below the world floor for seed "
+					+ seed + ": " + spawn);
+		}
 		Pair<BlockPos, Holder<Biome>> nearest = level.findClosestBiome3d(
 				holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN),
 				spawn, MAX_SPAWN_DISTANCE, 32, 64);
