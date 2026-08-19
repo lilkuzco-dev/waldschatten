@@ -8,8 +8,9 @@ if ! command -v xvfb-run >/dev/null 2>&1; then
 	exit 65
 fi
 
-mkdir -p build/lwjgl-natives build/tmp
-export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dorg.lwjgl.system.SharedLibraryExtractPath=$PWD/build/lwjgl-natives -Djava.io.tmpdir=$PWD/build/tmp"
+native_dir="/dev/shm/waldschatten-lwjgl-${GIT_COMMIT:-build}"
+mkdir -p "$native_dir" build/tmp
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dorg.lwjgl.system.SharedLibraryExtractPath=$native_dir -Djava.io.tmpdir=$PWD/build/tmp"
 
 assets_ready=0
 for attempt in 1 2 3; do
