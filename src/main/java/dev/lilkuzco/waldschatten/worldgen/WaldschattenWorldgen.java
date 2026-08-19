@@ -75,8 +75,10 @@ public final class WaldschattenWorldgen {
 	/** Vanilla's high-erosion lowlands: flat first, with enough gentle variation to look natural. */
 	static final long LOWLAND_MIN = Climate.quantizeCoord(0.565F);
 	static final long LOWLAND_MAX = Climate.quantizeCoord(1.0F);
-	static final long LOWLAND_CONTINENTAL_MIN = Climate.quantizeCoord(-0.05F);
-	static final long LOWLAND_CONTINENTAL_MAX = Climate.quantizeCoord(0.30F);
+	static final long LOWLAND_CONTINENTAL_MIN = Climate.quantizeCoord(-0.20F);
+	static final long LOWLAND_CONTINENTAL_MAX = Climate.quantizeCoord(-0.11F);
+	static final long LOWLAND_WEIRDNESS_MIN = Climate.quantizeCoord(0.26666668F);
+	static final long LOWLAND_WEIRDNESS_MAX = Climate.quantizeCoord(0.40F);
 
 	/**
 	 * A biome lookup, borrowed from whoever last built a multi-noise parameter list.
@@ -123,7 +125,10 @@ public final class WaldschattenWorldgen {
 			long continentalMax = Math.min(point.continentalness().max(), LOWLAND_CONTINENTAL_MAX);
 			long intersectionMin = Math.max(point.erosion().min(), LOWLAND_MIN);
 			long intersectionMax = Math.min(point.erosion().max(), LOWLAND_MAX);
-			if (continentalMin > continentalMax || intersectionMin > intersectionMax) {
+			long weirdnessMin = Math.max(point.weirdness().min(), LOWLAND_WEIRDNESS_MIN);
+			long weirdnessMax = Math.min(point.weirdness().max(), LOWLAND_WEIRDNESS_MAX);
+			if (continentalMin > continentalMax || intersectionMin > intersectionMax
+					|| weirdnessMin > weirdnessMax) {
 				claimed.add(entry);
 				continue;
 			}
@@ -143,8 +148,17 @@ public final class WaldschattenWorldgen {
 			if (point.erosion().min() < intersectionMin) {
 				claimed.add(Pair.of(withErosion(middle, point.erosion().min(), intersectionMin - 1), entry.getSecond()));
 			}
-			claimed.add(Pair.of(withErosion(middle, intersectionMin, intersectionMax), ours.get()));
+			Climate.ParameterPoint flatMiddle = withErosion(middle, intersectionMin, intersectionMax);
+			if (point.weirdness().min() < weirdnessMin) {
+				claimed.add(Pair.of(withWeirdness(
+						flatMiddle, point.weirdness().min(), weirdnessMin - 1), entry.getSecond()));
+			}
+			claimed.add(Pair.of(withWeirdness(flatMiddle, weirdnessMin, weirdnessMax), ours.get()));
 			slices++;
+			if (weirdnessMax < point.weirdness().max()) {
+				claimed.add(Pair.of(withWeirdness(
+						flatMiddle, weirdnessMax + 1, point.weirdness().max()), entry.getSecond()));
+			}
 			if (intersectionMax < point.erosion().max()) {
 				claimed.add(Pair.of(withErosion(middle, intersectionMax + 1, point.erosion().max()), entry.getSecond()));
 			}
@@ -190,6 +204,17 @@ public final class WaldschattenWorldgen {
 				point.erosion(),
 				point.depth(),
 				point.weirdness(),
+				point.offset());
+	}
+
+	static Climate.ParameterPoint withWeirdness(Climate.ParameterPoint point, long min, long max) {
+		return new Climate.ParameterPoint(
+				point.temperature(),
+				point.humidity(),
+				point.continentalness(),
+				point.erosion(),
+				point.depth(),
+				new Climate.Parameter(min, max),
 				point.offset());
 	}
 
