@@ -11,6 +11,19 @@ fi
 mkdir -p build/lwjgl-natives build/tmp
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dorg.lwjgl.system.SharedLibraryExtractPath=$PWD/build/lwjgl-natives -Djava.io.tmpdir=$PWD/build/tmp"
 
+assets_ready=0
+for attempt in 1 2 3; do
+	if ./gradlew downloadAssets --no-daemon --console=plain --stacktrace; then
+		assets_ready=1
+		break
+	fi
+	echo "Minecraft asset download attempt $attempt failed; retrying." >&2
+done
+if [ "$assets_ready" -ne 1 ]; then
+	echo "Minecraft assets could not be downloaded after three attempts." >&2
+	exit 66
+fi
+
 timeout 12m xvfb-run -a ./gradlew runGametest --no-daemon --console=plain
 
 terralith_mods="$PWD/build/jitpack-terralith-mods"
