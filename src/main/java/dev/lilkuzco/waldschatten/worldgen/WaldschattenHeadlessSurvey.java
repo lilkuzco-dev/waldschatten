@@ -14,6 +14,7 @@ import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.biome.BiomeSource;
 import net.minecraft.world.level.biome.Biomes;
@@ -87,7 +88,8 @@ public final class WaldschattenHeadlessSurvey {
 			int minGround = Integer.MAX_VALUE;
 			int maxGround = Integer.MIN_VALUE;
 			int terrainSamples = 0;
-			Cell start = findWaldschattenCell(source, sampler, nearest.getFirst());
+			Map<Cell, SurfaceSample> surface = new HashMap<>();
+			Cell start = findWaldschattenCell(level, nearest.getFirst(), surface);
 			if (start == null) {
 				throw new AssertionError("Could not find the chunk-centre Waldschatten patch for seed " + seed);
 			}
@@ -97,13 +99,14 @@ public final class WaldschattenHeadlessSurvey {
 			open.add(start);
 			while (!open.isEmpty() && terrainSamples < 64) {
 				Cell cell = open.removeFirst();
-				if (!seen.add(cell) || !isWaldschatten(source, sampler, cell.x(), cell.z())) {
+				if (!seen.add(cell)) {
 					continue;
 				}
-				int blockX = (cell.x() << 4) + 8;
-				int blockZ = (cell.z() << 4) + 8;
-				level.getChunkAt(new BlockPos(blockX, SURVEY_Y, blockZ));
-				int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ);
+				SurfaceSample sample = surfaceSample(level, cell, surface);
+				if (!sample.waldschatten()) {
+					continue;
+				}
+				int ground = sample.ground();
 				minGround = Math.min(minGround, ground);
 				maxGround = Math.max(maxGround, ground);
 				terrainSamples++;
@@ -125,19 +128,39 @@ public final class WaldschattenHeadlessSurvey {
 				darkForest, forest, biomeDistance, hutDistance, relief);
 	}
 
-	private static Cell findWaldschattenCell(BiomeSource source, Climate.Sampler sampler, BlockPos near) {
+	private static Cell findWaldschattenCell(
+			ServerLevel level, BlockPos near, Map<Cell, SurfaceSample> surface) {
 		int centreX = Math.floorDiv(near.getX(), 16);
 		int centreZ = Math.floorDiv(near.getZ(), 16);
-		for (int radius = 0; radius <= 4; radius++) {
+		for (int radius = 0; radius <= 16; radius++) {
 			for (int x = centreX - radius; x <= centreX + radius; x++) {
 				for (int z = centreZ - radius; z <= centreZ + radius; z++) {
-					if (isWaldschatten(source, sampler, x, z)) {
-						return new Cell(x, z);
+					Cell cell = new Cell(x, z);
+					if (surfaceSample(level, cell, surface).waldschatten()) {
+						return cell;
 					}
 				}
 			}
 		}
 		return null;
+	}
+
+	private static SurfaceSample surfaceSample(
+			ServerLevel level, Cell cell, Map<Cell, SurfaceSample> cache) {
+		return cache.computeIfAbsent(cell, ignored -> {
+			int blockX = (cell.x() << 4) + 8;
+			int blockZ = (cell.z() << 4) + 8;
+			level.getChunkAt(new BlockPos(blockX, SURVEY_Y, blockZ));
+			int ground = level.getHeight(
+					Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ) - 1;
+			BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos(blockX, ground, blockZ);
+			while (ground > level.getMinY() && level.getBlockState(cursor).is(BlockTags.LOGS)) {
+				ground--;
+				cursor.setY(ground);
+			}
+			boolean waldschatten = level.getBiome(cursor).is(WaldschattenWorldgen.WALDSCHATTEN);
+			return new SurfaceSample(waldschatten, ground);
+		});
 	}
 
 	private static boolean isWaldschatten(
@@ -147,6 +170,9 @@ public final class WaldschattenHeadlessSurvey {
 	}
 
 	private record Cell(int x, int z) {
+	}
+
+	private record SurfaceSample(boolean waldschatten, int ground) {
 	}
 
 	private static String pct(int n, int total) {
