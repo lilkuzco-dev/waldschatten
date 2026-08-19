@@ -8,6 +8,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.storage.LevelData;
 
 /** Ensures the default world spawn can never strand Waldschatten beyond discovery range. */
 public final class WaldschattenSpawnAnchor {
@@ -36,7 +37,7 @@ public final class WaldschattenSpawnAnchor {
 		BlockPos biome = fallback.getFirst();
 		int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, biome.getX(), biome.getZ());
 		BlockPos corrected = new BlockPos(biome.getX(), y, biome.getZ());
-		level.setDefaultSpawnPos(corrected, 0.0F);
+		level.setRespawnData(LevelData.RespawnData.of(level.dimension(), corrected, 0.0F, 0.0F));
 		Waldschatten.LOGGER.warn(
 				"Nearest Waldschatten was {} blocks from {}; moved default spawn to {} to enforce the 1,000-block promise.",
 				distance(spawn, biome), spawn, corrected);
