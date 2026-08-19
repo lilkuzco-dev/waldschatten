@@ -50,40 +50,52 @@ public class WaldschattenWorldSurvey implements FabricClientGameTest {
 	private static final int SURVEY_STEP = 128;
 	/** Sampled at sea level: these are surface biomes, and that is where a player meets them. */
 	private static final int SURVEY_Y = 64;
+	/** Stable, deliberately varied seeds; includes the empire server's previous seed. */
+	private static final long[] SPAWN_SEEDS = {
+			0L, 1L, -1L, 8675309L, -160353759327030922L, Long.MAX_VALUE
+	};
+	/** Discoverability is a release requirement, not a line in marketing copy. */
+	private static final int MAX_SPAWN_DISTANCE = 1000;
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
-		// A normal world rather than the battery's fixed one — the whole point is to ask a
-		// generator that was allowed to make its own mind up.
-		try (TestSingleplayerContext world = context.worldBuilder().setUseConsistentSettings(false).create()) {
-			context.waitTicks(100);
+		// Normal worlds rather than the battery's fixed one — the whole point is to ask a
+		// generator that was allowed to make its own mind up. Fixed seeds make regressions
+		// reproducible and exercise more than one lucky origin.
+		for (long seed : SPAWN_SEEDS) {
+			try (TestSingleplayerContext world = context.worldBuilder()
+					.setUseConsistentSettings(false)
+					.adjustSettings(settings -> settings.setSeed(Long.toString(seed)))
+					.create()) {
+				context.waitTicks(100);
 
-			world.getServer().runOnServer(mcServer -> {
-				ServerLevel level = mcServer.overworld();
-				BiomeSource source = level.getChunkSource().getGenerator().getBiomeSource();
+				world.getServer().runOnServer(mcServer -> {
+					ServerLevel level = mcServer.overworld();
+					BiomeSource source = level.getChunkSource().getGenerator().getBiomeSource();
 
-				// Which worldgen is this? The answer changes what the numbers mean, and a
-				// survey that does not say is a survey nobody can act on.
-				var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
-				Waldschatten.LOGGER.info("WALDSCHATTEN_SURVEY worldgen context: terralith={} lithostitched={} biomeSource={}",
-						loader.isModLoaded("terralith"), loader.isModLoaded("lithostitched"),
-						source.getClass().getSimpleName());
+					// Which worldgen is this? The answer changes what the numbers mean, and a
+					// survey that does not say is a survey nobody can act on.
+					var loader = net.fabricmc.loader.api.FabricLoader.getInstance();
+					Waldschatten.LOGGER.info(
+							"WALDSCHATTEN_SURVEY seed={} worldgen context: terralith={} lithostitched={} biomeSource={}",
+							seed, loader.isModLoaded("terralith"), loader.isModLoaded("lithostitched"),
+							source.getClass().getSimpleName());
 
-				int possible = source.possibleBiomes().size();
-				boolean present = source.possibleBiomes().stream()
-						.anyMatch(holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN));
-				Waldschatten.LOGGER.info(
-						"WALDSCHATTEN_SURVEY world offers {} biomes; waldschatten present in the biome source: {}",
-						possible, present);
-				if (!present) {
-					Waldschatten.LOGGER.warn("WALDSCHATTEN_SURVEY biome is absent from this world — nothing below is meaningful");
-					return;
-				}
+					int possible = source.possibleBiomes().size();
+					boolean present = source.possibleBiomes().stream()
+							.anyMatch(holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN));
+					Waldschatten.LOGGER.info(
+							"WALDSCHATTEN_SURVEY seed={} world offers {} biomes; waldschatten present: {}",
+							seed, possible, present);
+					if (!present) {
+						throw new AssertionError("Waldschatten is absent from seed " + seed);
+					}
 
-				survey(level, source);
-				distances(level);
-			});
-			context.waitTicks(20);
+					survey(level, source);
+					distances(level, seed);
+				});
+				context.waitTicks(20);
+			}
 		}
 	}
 
@@ -116,32 +128,37 @@ public class WaldschattenWorldSurvey implements FabricClientGameTest {
 	}
 
 	/** How far would a player actually have to walk? */
-	private static void distances(ServerLevel level) {
-		BlockPos origin = BlockPos.ZERO;
+	private static void distances(ServerLevel level, long seed) {
+		BlockPos origin = level.getRespawnData().pos();
 
 		Pair<BlockPos, Holder<Biome>> nearest = level.findClosestBiome3d(
-				holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN), origin, 3200, 32, 64);
+				holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN), origin, MAX_SPAWN_DISTANCE, 32, 64);
 		if (nearest == null) {
-			Waldschatten.LOGGER.info("WALDSCHATTEN_SURVEY no waldschatten within 3200 blocks of origin");
+			throw new AssertionError("No Waldschatten within " + MAX_SPAWN_DISTANCE
+					+ " blocks of spawn for seed " + seed + " (spawn "
+					+ origin.getX() + "," + origin.getY() + "," + origin.getZ() + ")");
 		} else {
 			BlockPos at = nearest.getFirst();
-			Waldschatten.LOGGER.info("WALDSCHATTEN_SURVEY nearest waldschatten at {} {} — {} blocks from origin",
-					at.getX(), at.getZ(), (int) Math.sqrt(at.distSqr(origin)));
+			Waldschatten.LOGGER.info(
+					"WALDSCHATTEN_SURVEY seed={} spawn={} nearest waldschatten at {} {} — {} blocks from spawn",
+					seed, origin, at.getX(), at.getZ(), (int) Math.sqrt(at.distSqr(origin)));
 		}
 
-		// The hut is gated to the biome on top of its own spacing, so its rarity compounds
-		// the biome's. Searching for it directly is the only honest way to know the result.
+		// The custom placement elects a deterministic anchor in each contiguous biome patch.
+		// Searching the real structure state verifies that the codec, registry and locator
+		// all agree — pure anchor arithmetic alone would miss an integration failure.
 		level.registryAccess().lookupOrThrow(Registries.STRUCTURE)
 				.get(ResourceKey.create(Registries.STRUCTURE, Waldschatten.id("witch_hut")))
 				.ifPresent(hut -> {
 					Pair<BlockPos, Holder<Structure>> found = level.getChunkSource().getGenerator()
-							.findNearestMapStructure(level, HolderSet.direct(hut), origin, 48, false);
+							.findNearestMapStructure(level, HolderSet.direct(hut), origin, 128, false);
 					if (found == null) {
-						Waldschatten.LOGGER.info("WALDSCHATTEN_SURVEY no witch hut within a 48-chunk search of origin");
+						throw new AssertionError("No Waldschatten witch hut within 128 chunks of spawn for seed " + seed);
 					} else {
 						BlockPos at = found.getFirst();
-						Waldschatten.LOGGER.info("WALDSCHATTEN_SURVEY nearest witch hut at {} {} — {} blocks from origin",
-								at.getX(), at.getZ(), (int) Math.sqrt(at.distSqr(origin)));
+						Waldschatten.LOGGER.info(
+								"WALDSCHATTEN_SURVEY seed={} nearest witch hut at {} {} — {} blocks from spawn",
+								seed, at.getX(), at.getZ(), (int) Math.sqrt(at.distSqr(origin)));
 					}
 				});
 	}

@@ -182,10 +182,12 @@ point covering a sub-box of dark forest's climate scores exactly what dark fores
 ties, and loses every tie. **You cannot beat zero with zero.** The first version did this and
 generated **0 of 4225 samples** while every registry assertion reported success.
 
-So Waldschatten **claims** ground: every dark forest entry overlapping the **hilly erosion
-band** (−0.375 … −0.2225) is re-pointed at Waldschatten. It inherits dark forest's whole
-climate envelope and takes a defined, explainable piece of it — *the dark forest that grows on
-broken ground*, which is the rolling terrain the design wanted anyway.
+So Waldschatten **claims** ground: the exact **high-erosion lowland slice** (0.05 … 1.0) of
+forest and dark-forest entries becomes Waldschatten. In Minecraft's terrain model that is the
+flat-to-gently-rolling half, which makes the canopy and tree silhouettes carry the horror.
+Broad Terralith entries are split at the two boundaries: the intersection becomes
+Waldschatten and every coordinate outside it keeps its original biome. The old overlap-only
+implementation re-pointed whole entries and accidentally captured mountain bands.
 
 **2. The claim happens at the biome SOURCE, not at `OverworldBiomeBuilder`.** There are two
 overworlds in play and only that layer sees both:
@@ -219,16 +221,18 @@ and asks again.
 | | vanilla | Terralith + lithostitched |
 |---|---|---|
 | biomes in the world | 56 | 147 |
-| **Waldschatten** | **0.40 – 1.16%** | **1.04 – 1.99%** |
+| **Waldschatten** | re-survey required for 0.1.1 | re-survey required for 0.1.1 |
 | vanilla dark forest | 0.97 – 1.40% | 0.24 – 0.57% |
 | vanilla forest | 11.3 – 11.8% | 4.2 – 5.5% |
-| entries claimed | 102 of 7594 | 30 of 1710 |
-| nearest, from origin | 614 – 1970 blocks | 251 – 1505 blocks |
-| nearest witch hut | 3.8k – 6.5k blocks | 3.2k – 3.8k blocks |
+| entries claimed | exact lowland slices | exact lowland slices |
+| nearest, from spawn | must be ≤ 1,000 blocks on all survey seeds | must be ≤ 1,000 blocks on all survey seeds |
+| witch huts | deterministic patch anchors | deterministic patch anchors |
 
-4225 samples on a 128-block grid over 8192×8192 at y=64, taken off the biome source with no
-chunks generated. Roughly one percent of the world in both, comparable to vanilla dark forest,
-findable on foot, with the hut a genuine expedition.
+Each seed is sampled on a 128-block grid over 8192×8192 at y=64, directly from the biome
+source. The discoverability check measures from the actual world spawn, not coordinate zero.
+Huts use a custom 1x1 placement grid whose deterministic predicate elects a north-west
+boundary chunk in every contiguous Waldschatten patch. Every finite patch has at least one
+such boundary; concave patches can have more than one.
 
 The survey points `runTerralithSurvey` at `~/Desktop/mc-server/server-mods-staging` by default;
 set `WALDSCHATTEN_TERRALITH_MODS` to any folder holding the two jars. They are staged into the

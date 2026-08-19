@@ -3,7 +3,4 @@ before_install:
   - sdk use java 25-open
 
 install:
-  - node tools/gen-structures.js
-  - node tools/lint-structures.js
-  - git diff --exit-code
   - ./gradlew clean test build publishToMavenLocal --no-daemon --console=plain

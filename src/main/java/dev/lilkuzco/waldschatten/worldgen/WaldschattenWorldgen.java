@@ -21,23 +21,15 @@ import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement
  *
  * <h2>Why this is a mixin and not an API call</h2>
  * Fabric API ships {@code NetherBiomes} and {@code TheEndBiomes} and nothing for the
- * overworld — verified against fabric-biome-api-v1 18.0.6, which is what this mod builds
- * against. The overworld's biome layout comes from
- * {@code MultiNoiseBiomeSourceParameterList.Preset.OVERWORLD}, which is built in code by
- * {@code OverworldBiomeBuilder.addBiomes}, so appending to that consumer is the injection
- * point. {@link dev.lilkuzco.waldschatten.mixin.OverworldBiomeBuilderMixin} does exactly
- * that and nothing else.
+ * overworld. Both vanilla and Terralith ultimately resolve a {@link Climate.ParameterList}
+ * through {@code MultiNoiseBiomeSource}; the mixin at that common layer lets this class
+ * make the same bounded replacement in either worldgen stack.
  *
  * <h2>What this does NOT do</h2>
- * <b>It is a no-op on a Terralith world, silently.</b> Terralith replaces the overworld
- * biome source outright, so a world generated with it never asks the vanilla preset what
- * biomes exist and never sees these entries. That is the single most important thing to
- * know about this file, because the empire server runs Terralith (CLAUDE.md rule 2) and
- * "no crash, no log line, no biome" is exactly the invisible failure this repo keeps
- * getting bitten by. {@link #logPlacement} therefore says out loud, at startup, what was
- * injected — so a missing biome is a discrepancy between the log and the world rather
- * than a mystery. Shipping to a Terralith world needs a separate decision and a
- * lithostitched or TerraBlender route; see WALDSCHATTEN.md.
+ * It does not edit terrain density functions, surface rules, or another mod's data files.
+ * The terrain shape comes from the selected climate slice; the replacement changes only
+ * which biome owns that slice. {@link #logPlacement} says what was claimed at startup so a
+ * missing biome is a logged discrepancy rather than an invisible failure.
  */
 public final class WaldschattenWorldgen {
 

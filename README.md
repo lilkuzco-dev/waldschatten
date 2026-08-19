@@ -8,8 +8,9 @@ things that hunt you do not wait for evening.
 
 ## What it adds
 
-- **The biome.** Temperate, wet, hilly. Every colour is vanilla forest hue-shifted a shade or
-  two darker, so it reads as the same woods gone wrong rather than as a different game.
+- **The biome.** Temperate, wet, and mostly flat beneath an oppressive canopy. Every colour is
+  vanilla forest hue-shifted a shade or two darker, so the haunting comes from the darkness
+  and twisted silhouettes rather than mountain terrain.
 - **16 blocks** — a full twisted-wood set that strips, burns and crafts like any other wood;
   thorn vines that slow and scratch anything shoving through them; gnarled floor roots,
   nightshade, mandrake, witch hazel, bone chimes that hang from the canopy, ashen soil, cairn
@@ -18,8 +19,9 @@ things that hunt you do not wait for evening.
   ordinary torch barely dents it. A **soul torch** is the one light that behaves normally, out
   to nine blocks — as far as a soul flame's own light actually carries. Go down a cave and
   the rule lets you be; it is about the wood, not the dark in general.
-- **A witch hut** — a crooked cottage on uneven stilts with a steep roof, a smoking chimney, a
-  scarecrow, a fenced herb garden, a cauldron in the yard, and somebody already home.
+- **A witch hut in every forest patch** — a crooked cottage on uneven stilts with a steep roof,
+  a smoking chimney, a scarecrow, a fenced herb garden, a cauldron in the yard, and somebody
+  already home.
 - **Five set-pieces** scattered through the wood: a gallows clearing, a standing stone circle,
   a shrine at the foot of an old tree, a sunken cottage full of cobwebs, and a fairy ring that
   glows after dark.
@@ -63,7 +65,8 @@ Two survey tasks answer "does this biome actually turn up":
 ./gradlew runTerralithSurvey    # the same survey with real Terralith + lithostitched loaded
 ```
 
-Both report roughly **1% of the world**, comparable to vanilla dark forest.
+The survey checks six reproducible seeds and fails if Waldschatten is more than 1,000 blocks
+from the real world spawn or if its patch-anchored witch hut cannot be located.
 
 See [WALDSCHATTEN.md](WALDSCHATTEN.md) for the design rulings, the file map, the phase 2 list,
 and a table of everything 1.21-era worldgen knowledge gets wrong on 26.2.
