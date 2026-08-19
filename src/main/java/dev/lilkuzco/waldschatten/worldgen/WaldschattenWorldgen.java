@@ -73,7 +73,7 @@ public final class WaldschattenWorldgen {
 	// ---------------------------------------------------------------------------
 
 	/** Vanilla's high-erosion lowlands: flat first, with enough gentle variation to look natural. */
-	static final long LOWLAND_MIN = Climate.quantizeCoord(0.05F);
+	static final long LOWLAND_MIN = Climate.quantizeCoord(0.565F);
 	static final long LOWLAND_MAX = Climate.quantizeCoord(1.0F);
 
 	/**
