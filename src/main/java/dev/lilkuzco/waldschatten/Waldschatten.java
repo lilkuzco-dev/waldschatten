@@ -31,6 +31,7 @@ public class Waldschatten implements ModInitializer {
 		WaldschattenTab.register();
 		WaldschattenWorldgen.register();
 		WaldschattenDarkness.register();
+		WaldschattenHutWitch.register();
 
 		if (Boolean.getBoolean("waldschatten.headless.survey")) {
 			ServerLifecycleEvents.SERVER_STARTED.register(server -> {

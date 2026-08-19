@@ -5,7 +5,8 @@
 	"mixins": [
 		"ChunkGeneratorStructureStateAccessor",
 		"MultiNoiseBiomeSourceMixin",
-		"MultiNoiseBiomeSourceParameterListMixin"
+		"MultiNoiseBiomeSourceParameterListMixin",
+		"WitchMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -338,6 +338,115 @@ function fairyRing() {
 	return t;
 }
 
+// The hut is a deliberately late-game prize. Its guardian is far beyond an iron-tier
+// fight, so the chest pays that risk back with both empire metals, useful brewing stock,
+// and several immediately usable potions. The two metal pools are guaranteed rather than
+// low-weight lottery entries: finding and defeating the Hexmother is the roll.
+const uniformCount = (min, max) => ({
+	function: "minecraft:set_count",
+	count: { type: "minecraft:uniform", min: Number(min), max: Number(max) },
+});
+const item = (name, weight = 1, count = null) => ({
+	type: "minecraft:item",
+	name,
+	...(weight === 1 ? {} : { weight }),
+	...(count ? { functions: [uniformCount(...count)] } : {}),
+});
+const potion = (id, splash = false, weight = 1) => ({
+	type: "minecraft:item",
+	name: splash ? "minecraft:splash_potion" : "minecraft:potion",
+	weight,
+	functions: [{
+		function: "minecraft:set_components",
+		components: { "minecraft:potion_contents": `minecraft:${id}` },
+	}],
+});
+
+function witchHutLoot() {
+	return {
+		type: "minecraft:chest",
+		random_sequence: `${NS}:chests/witch_hut`,
+		pools: [
+			{
+				rolls: 1.0,
+				bonus_rolls: 0.0,
+				entries: [item("vibranium:vibranium_ingot", 1, [2, 4])],
+			},
+			{
+				rolls: 1.0,
+				bonus_rolls: 0.0,
+				entries: [item("vibranium:godite_ingot", 1, [1, 2])],
+			},
+			{
+				rolls: 2.0,
+				bonus_rolls: 0.0,
+				entries: [
+					item("minecraft:diamond", 7, [2, 5]),
+					item("minecraft:netherite_scrap", 5, [1, 2]),
+					item("minecraft:echo_shard", 4, [2, 5]),
+					item("minecraft:totem_of_undying", 3),
+					item("minecraft:enchanted_golden_apple", 2),
+				],
+			},
+			{
+				rolls: { type: "minecraft:uniform", min: 4.0, max: 6.0 },
+				bonus_rolls: 0.0,
+				entries: [
+					potion("strong_healing", false, 8),
+					potion("strong_healing", true, 5),
+					potion("long_regeneration", false, 7),
+					potion("strong_strength", false, 6),
+					potion("long_fire_resistance", false, 5),
+					potion("long_night_vision", false, 4),
+					potion("long_invisibility", false, 3),
+				],
+			},
+			{
+				rolls: { type: "minecraft:uniform", min: 5.0, max: 8.0 },
+				bonus_rolls: 0.0,
+				entries: [
+					item("minecraft:blaze_powder", 8, [3, 8]),
+					item("minecraft:nether_wart", 8, [2, 6]),
+					item("minecraft:glowstone_dust", 7, [3, 8]),
+					item("minecraft:redstone", 7, [4, 10]),
+					item("minecraft:gunpowder", 6, [2, 6]),
+					item("minecraft:fermented_spider_eye", 6, [2, 5]),
+					item("minecraft:magma_cream", 5, [2, 5]),
+					item("minecraft:phantom_membrane", 4, [1, 3]),
+					item("minecraft:ghast_tear", 3, [1, 2]),
+					item("minecraft:golden_apple", 3, [1, 2]),
+					item(`${NS}:nightshade_plant`, 5, [2, 5]),
+					item(`${NS}:mandrake_root`, 4, [1, 3]),
+					item(`${NS}:witch_hazel_bush`, 5, [2, 4]),
+				],
+			},
+			{
+				rolls: 1.0,
+				bonus_rolls: 0.0,
+				conditions: [{ condition: "minecraft:random_chance", chance: 0.5 }],
+				entries: [{
+					type: "minecraft:item",
+					name: "minecraft:written_book",
+					functions: [{
+						function: "minecraft:set_components",
+						components: {
+							"minecraft:written_book_content": {
+								title: "Her Ledger",
+								author: "The Hexmother",
+								pages: [
+									"\"The wood is honest. It takes what it is owed, and warns you first: thorns before teeth.\"",
+									"\"Torches burn here. They simply do not help. A flame the colour of the sky before dawn will hold.\"",
+									"\"If you have opened this chest, then either I am dead or you soon will be. Take what you can carry.\"",
+								],
+							},
+						},
+					}],
+				}],
+			},
+		],
+	};
+}
+
 // ===========================================================================
 function main() {
 	const templates = [
@@ -437,6 +546,7 @@ function main() {
 		placement: { type: `${NS}:patch_anchor` },
 		structures: [{ structure: `${NS}:witch_hut`, weight: 1 }],
 	});
+	write(path.join(RES, "data", NS, "loot_table", "chests", "witch_hut.json"), witchHutLoot());
 
 	// The set-pieces share one set so they compete for the same slots — that keeps them
 	// from stacking on top of each other, and tight spacing makes the wood feel inhabited.

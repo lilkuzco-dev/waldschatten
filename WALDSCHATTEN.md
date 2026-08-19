@@ -59,6 +59,23 @@ The class only ever lifts darkness it applied itself. `removeEffect` cannot ask 
 effect came from, so an unguarded call would cancel a *Warden's* darkness for anyone who
 stepped near a soul torch.
 
+## The hut guardian and its reward
+
+A witch loaded inside a naturally generated Waldschatten hut becomes the named
+**Waldschatten Hexmother**. Ordinary witches elsewhere are unchanged. The Hexmother starts
+with **130 health** (exactly five times vanilla's 26), 15 armour, 8 armour toughness, 60%
+knockback resistance, permanent Resistance I and Regeneration I, and heals when she casts
+an offensive volley. Her normal thrown potion is followed by a short Wither II hex plus
+Slowness II, Weakness II and Blindness. Iron armour and an iron sword are intentionally not
+enough preparation for this fight.
+
+The hut chest matches that risk. Every unopened chest guarantees **2–4 vibranium ingots**
+and **1–2 godite ingots**, rolls two further treasures (diamonds, netherite scrap, echo
+shards, a totem, or an enchanted golden apple), then supplies 4–6 useful potions and 5–8
+brewing or Waldschatten ingredients. This creates an intentional runtime dependency on
+Vibranium 1.8.1 or newer; the item identifiers are `vibranium:vibranium_ingot` and
+`vibranium:godite_ingot`.
+
 ---
 
 ## Proof, not assertion
@@ -142,6 +159,7 @@ src/main/java/dev/lilkuzco/waldschatten/
   WaldschattenItems.java     one BlockItem per block, built FROM the block map
   WaldschattenTab.java       creative tab + assertComplete()
   WaldschattenDarkness.java  the dark, and the soul-torch exemption
+  WaldschattenHutWitch.java  structure-scoped Hexmother upgrade and boss profile
   block/                     ThornVineBlock, BoneChimeBlock, GnarledRootsBlock, plants
   worldgen/                  biome key + the multi-noise climate niche
   mixin/                     OverworldBiomeBuilderMixin — the only way to place a biome

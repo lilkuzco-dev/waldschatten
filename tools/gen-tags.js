@@ -58,6 +58,9 @@ const TAGS = {
 		"tags/worldgen/biome/is_spooky": [B("waldschatten")],
 		"tags/worldgen/biome/has_structure/witch_hut": [B("waldschatten")],
 		"tags/worldgen/biome/has_structure/set_pieces": [B("waldschatten")],
+		// Runtime identification for the Hexmother upgrade. Keeping this as a tag means
+		// future hut variants can opt into the same guardian without a Java change.
+		"tags/worldgen/structure/witch_huts": [B("witch_hut")],
 	},
 };
 
