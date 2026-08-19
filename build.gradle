@@ -110,10 +110,16 @@ jar {
 	}
 }
 
+tasks.register('verificationScreenshotsJar', Jar) {
+	archiveClassifier = 'verification-screenshots'
+	from(layout.buildDirectory.dir('run-gametest/screenshots'))
+}
+
 publishing {
 	publications {
 		create("mavenJava", MavenPublication) {
 			from components.java
+			artifact tasks.named('verificationScreenshotsJar')
 		}
 	}
 	repositories {
