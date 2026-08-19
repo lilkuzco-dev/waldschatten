@@ -8,5 +8,8 @@ if ! command -v xvfb-run >/dev/null 2>&1; then
 	exit 65
 fi
 
+mkdir -p build/lwjgl-natives build/tmp
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Dorg.lwjgl.system.SharedLibraryExtractPath=$PWD/build/lwjgl-natives -Djava.io.tmpdir=$PWD/build/tmp"
+
 timeout 12m xvfb-run -a ./gradlew runGametest --no-daemon --console=plain
 ./gradlew publishToMavenLocal --no-daemon --console=plain
