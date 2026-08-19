@@ -18,10 +18,14 @@ seeds=(0 1 -1 8675309 -160353759327030922 9223372036854775807)
 for seed in "${seeds[@]}"; do
 	WALDSCHATTEN_SURVEY_SEED="$seed" \
 		timeout 5m ./gradlew runHeadlessSurvey --no-daemon --console=plain
+	grep -F "WALDSCHATTEN_HEADLESS PASS seed=$seed " \
+		build/run-headless-survey/logs/latest.log >/dev/null
 done
 for seed in "${seeds[@]}"; do
 	WALDSCHATTEN_SURVEY_SEED="$seed" WALDSCHATTEN_TERRALITH_MODS="$terralith_mods" \
 		timeout 5m ./gradlew runHeadlessTerralithSurvey --no-daemon --console=plain
+	grep -F "WALDSCHATTEN_HEADLESS PASS seed=$seed " \
+		build/run-headless-terralith/logs/latest.log >/dev/null
 done
 
 ./gradlew publishToMavenLocal --no-daemon --console=plain

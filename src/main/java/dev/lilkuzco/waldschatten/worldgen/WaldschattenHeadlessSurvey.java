@@ -2,8 +2,11 @@ package dev.lilkuzco.waldschatten.worldgen;
 
 import com.mojang.datafixers.util.Pair;
 import dev.lilkuzco.waldschatten.Waldschatten;
+import java.util.ArrayDeque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -76,21 +79,29 @@ public final class WaldschattenHeadlessSurvey {
 			int minGround = Integer.MAX_VALUE;
 			int maxGround = Integer.MIN_VALUE;
 			int terrainSamples = 0;
-			BlockPos centre = nearest.getFirst();
-			for (int x = centre.getX() - 64; x <= centre.getX() + 64; x += 32) {
-				for (int z = centre.getZ() - 64; z <= centre.getZ() + 64; z += 32) {
-					Holder<Biome> biome = source.getNoiseBiome(x >> 2, SURVEY_Y >> 2, z >> 2, sampler);
-					if (!biome.is(WaldschattenWorldgen.WALDSCHATTEN)) {
-						continue;
-					}
-					int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z);
-					minGround = Math.min(minGround, ground);
-					maxGround = Math.max(maxGround, ground);
-					terrainSamples++;
-				}
+			Cell start = findWaldschattenCell(source, sampler, nearest.getFirst());
+			if (start == null) {
+				throw new AssertionError("Could not find the chunk-centre Waldschatten patch for seed " + seed);
 			}
-			if (terrainSamples < 4) {
-				throw new AssertionError("Could not collect a meaningful Waldschatten terrain sample for seed " + seed);
+
+			ArrayDeque<Cell> open = new ArrayDeque<>();
+			Set<Cell> seen = new HashSet<>();
+			open.add(start);
+			while (!open.isEmpty() && terrainSamples < 64) {
+				Cell cell = open.removeFirst();
+				if (!seen.add(cell) || !isWaldschatten(source, sampler, cell.x(), cell.z())) {
+					continue;
+				}
+				int blockX = (cell.x() << 4) + 8;
+				int blockZ = (cell.z() << 4) + 8;
+				int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ);
+				minGround = Math.min(minGround, ground);
+				maxGround = Math.max(maxGround, ground);
+				terrainSamples++;
+				open.addLast(new Cell(cell.x() - 1, cell.z()));
+				open.addLast(new Cell(cell.x() + 1, cell.z()));
+				open.addLast(new Cell(cell.x(), cell.z() - 1));
+				open.addLast(new Cell(cell.x(), cell.z() + 1));
 			}
 			relief = maxGround - minGround;
 			if (relief > 24) {
@@ -103,6 +114,30 @@ public final class WaldschattenHeadlessSurvey {
 						+ "dark_forest={} forest={} nearest={} blocks hut={} blocks relief={} blocks",
 				seed, spawn, source.possibleBiomes().size(), samples, ours, pct(ours, samples),
 				darkForest, forest, biomeDistance, hutDistance, relief);
+	}
+
+	private static Cell findWaldschattenCell(BiomeSource source, Climate.Sampler sampler, BlockPos near) {
+		int centreX = Math.floorDiv(near.getX(), 16);
+		int centreZ = Math.floorDiv(near.getZ(), 16);
+		for (int radius = 0; radius <= 4; radius++) {
+			for (int x = centreX - radius; x <= centreX + radius; x++) {
+				for (int z = centreZ - radius; z <= centreZ + radius; z++) {
+					if (isWaldschatten(source, sampler, x, z)) {
+						return new Cell(x, z);
+					}
+				}
+			}
+		}
+		return null;
+	}
+
+	private static boolean isWaldschatten(
+			BiomeSource source, Climate.Sampler sampler, int chunkX, int chunkZ) {
+		return source.getNoiseBiome((chunkX << 2) + 2, SURVEY_Y >> 2, (chunkZ << 2) + 2, sampler)
+				.is(WaldschattenWorldgen.WALDSCHATTEN);
+	}
+
+	private record Cell(int x, int z) {
 	}
 
 	private static String pct(int n, int total) {
