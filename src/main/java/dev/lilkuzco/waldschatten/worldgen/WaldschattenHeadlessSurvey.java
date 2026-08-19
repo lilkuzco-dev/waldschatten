@@ -98,6 +98,7 @@ public final class WaldschattenHeadlessSurvey {
 				}
 				int blockX = (cell.x() << 4) + 8;
 				int blockZ = (cell.z() << 4) + 8;
+				level.getChunkAt(new BlockPos(blockX, SURVEY_Y, blockZ));
 				int ground = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, blockX, blockZ);
 				minGround = Math.min(minGround, ground);
 				maxGround = Math.max(maxGround, ground);
