@@ -74,8 +74,12 @@ public final class WaldschattenHeadlessSurvey {
 			throw new AssertionError("No Waldschatten witch hut within 128 chunks of spawn for seed " + seed);
 		}
 
-		int biomeDistance = (int) Math.sqrt(nearest.getFirst().distSqr(spawn));
-		int hutDistance = (int) Math.sqrt(found.getFirst().distSqr(spawn));
+		int biomeDistance = horizontalDistance(nearest.getFirst(), spawn);
+		int hutDistance = horizontalDistance(found.getFirst(), spawn);
+		if (biomeDistance > MAX_SPAWN_DISTANCE) {
+			throw new AssertionError("Waldschatten search escaped the " + MAX_SPAWN_DISTANCE
+					+ "-block promise for seed " + seed + ": " + nearest.getFirst());
+		}
 		boolean liveTerrainStack = FabricLoader.getInstance().isModLoaded("terralith")
 				&& FabricLoader.getInstance().isModLoaded("empire_worldgen");
 		int relief = -1;
@@ -147,6 +151,12 @@ public final class WaldschattenHeadlessSurvey {
 
 	private static String pct(int n, int total) {
 		return total == 0 ? "0" : String.format("%.2f", 100.0 * n / total);
+	}
+
+	private static int horizontalDistance(BlockPos a, BlockPos b) {
+		long dx = (long) a.getX() - b.getX();
+		long dz = (long) a.getZ() - b.getZ();
+		return (int) Math.sqrt(dx * dx + dz * dz);
 	}
 
 	private WaldschattenHeadlessSurvey() {

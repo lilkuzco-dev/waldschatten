@@ -23,7 +23,7 @@ public final class WaldschattenSpawnAnchor {
 	private static void ensureWithinReach(ServerLevel level) {
 		BlockPos spawn = level.getRespawnData().pos();
 		Pair<BlockPos, Holder<Biome>> nearby = find(level, spawn, PROMISED_DISTANCE);
-		if (nearby != null) {
+		if (nearby != null && distance(spawn, nearby.getFirst()) <= PROMISED_DISTANCE) {
 			Waldschatten.LOGGER.info("Waldschatten spawn guarantee satisfied from {} ({} blocks).",
 					spawn, distance(spawn, nearby.getFirst()));
 			return;
@@ -54,7 +54,9 @@ public final class WaldschattenSpawnAnchor {
 	}
 
 	private static int distance(BlockPos a, BlockPos b) {
-		return (int) Math.sqrt(a.distSqr(b));
+		long dx = (long) a.getX() - b.getX();
+		long dz = (long) a.getZ() - b.getZ();
+		return (int) Math.sqrt(dx * dx + dz * dz);
 	}
 
 	private WaldschattenSpawnAnchor() {
