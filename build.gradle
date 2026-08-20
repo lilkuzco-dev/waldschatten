@@ -58,6 +58,27 @@ tasks.matching { it.name == 'runGametest' }.configureEach {
 		new File(runDir, 'eula.txt').text =
 				"# written by the gametest run config; build/run-gametest is disposable\n" +
 				"eula=true\n"
+
+		// Waldschatten hard-depends on vibranium, so the battery cannot boot without it and
+		// fails at mod resolution before a single frame is taken. That is exactly how 0.1.2
+		// came to ship against 0.1.0-era screenshots: the run stopped being possible when the
+		// dependency was added, and a battery that cannot start looks the same from the
+		// outside as one nobody bothered to run. Stage it the way runTerralithSurvey stages
+		// Terralith — from the server staging folder by default, overridable.
+		def modsDir = new File(runDir, 'mods')
+		modsDir.mkdirs()
+		modsDir.listFiles()?.each { if (it.name.startsWith('vibranium') && it.name.endsWith('.jar')) it.delete() }
+		def source = System.getenv('WALDSCHATTEN_DEP_MODS')
+				?: "${System.getProperty('user.home')}/Desktop/mc-server/server-mods-staging"
+		def vibranium = file(source).listFiles()?.find {
+			it.name.toLowerCase().startsWith('vibranium') && it.name.endsWith('.jar')
+		}
+		if (!vibranium) {
+			throw new GradleException("The render battery needs a vibranium jar in ${source} "
+					+ "(waldschatten depends on vibranium >=1.8.1); set WALDSCHATTEN_DEP_MODS to a folder that has one")
+		}
+		new File(modsDir, vibranium.name).bytes = vibranium.bytes
+		logger.lifecycle("render battery: staged ${vibranium.name}")
 	}
 }
 
