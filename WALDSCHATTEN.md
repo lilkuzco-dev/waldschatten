@@ -162,7 +162,7 @@ src/main/java/dev/lilkuzco/waldschatten/
   WaldschattenHutWitch.java  structure-scoped Hexmother upgrade and boss profile
   block/                     ThornVineBlock, BoneChimeBlock, GnarledRootsBlock, plants
   worldgen/                  biome key + the multi-noise climate niche
-  mixin/                     OverworldBiomeBuilderMixin — the only way to place a biome
+  mixin/                     MultiNoiseBiomeSourceMixin — the only way to place a biome
 
 src/client/java/.../client/
   WaldschattenClient.java    deliberately empty; read it before adding anything
@@ -229,6 +229,21 @@ biome-adding modifier**, so the only lithostitched-shaped answer would be shippi
 its way past — that constructor is the one place in the chain handed a biome lookup, and
 rewriting a list requires a `Holder` for the biome being written in.
 
+**3. The claim is a `@ModifyReturnValue`, never a cancellable `@Inject`.** Waldschatten is not
+the only empire mod that rewrites this return value — Enchanted Forest claims birch-forest
+entries from the same list — and until 0.1.3 both did it with
+`@Inject(at = RETURN, cancellable = true)` + `setReturnValue`. Mixin emits
+`if (cancelled) return` after each callback at an injection point, so the first handler to
+cancel ends the method and every later handler is **skipped, silently**: the loser's code is
+never entered, so it cannot even log that it lost. Enchanted Forest's config registers first,
+so it claimed 176 entries and this mod's handler never ran — no claim line, no warning, and
+`/locate biome` found nothing in any world on any client or the server, while every survey on
+record had passed because every survey had run this mod alone. MixinExtras'
+`@ModifyReturnValue` (bundled in Fabric Loader, no new dependency) chains instead: each
+modifier receives the previous one's output, so both claims land whichever applies first.
+The two claims touch disjoint biomes, so order does not change the result either. Every
+survey now stages enchanted-forest and asserts **both** biomes are present.
+
 ### Measured, in real worlds
 
 `WaldschattenWorldSurvey` runs in a **normal** world (the render battery's world offers exactly
@@ -260,9 +275,14 @@ the connected Waldschatten patch from the nearest match, asking the real heightm
 zero. This is a reproducible survey, not a mathematical promise over every possible seed, so
 the runtime rule is paired with the six-seed regression gate.
 
-The survey points `runTerralithSurvey` at `~/Desktop/mc-server/server-mods-staging` by default;
-set `WALDSCHATTEN_TERRALITH_MODS` to any folder holding the two jars. They are staged into the
-run directory only — never a build dependency, never shipped.
+Every run config stages its neighbours from `~/Desktop/mc-server/server-mods-staging` by
+default; set `WALDSCHATTEN_DEP_MODS` to any folder holding them. The battery and the plain
+survey stage vibranium (the hard dependency) and enchanted-forest — the other empire mod
+that rewrites `MultiNoiseBiomeSource.parameters()`, staged because 0.1.2 passed every survey
+alone and was absent from every real world once the two claims collided. The Terralith
+variants add Terralith, lithostitched and empire_worldgen. All of it lands in the run
+directory only — never a build dependency, never shipped — and a missing jar fails the run
+loudly rather than quietly answering a different question.
 
 ### Tag reach — deliberate, not an oversight
 

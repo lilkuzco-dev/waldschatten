@@ -12,6 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.biome.Biome;
@@ -28,6 +29,8 @@ public final class WaldschattenHeadlessSurvey {
 	private static final int SURVEY_STEP = 128;
 	private static final int SURVEY_Y = 64;
 	private static final int MAX_SPAWN_DISTANCE = 1000;
+	private static final ResourceKey<Biome> ENCHANTED_FOREST = ResourceKey.create(
+			Registries.BIOME, Identifier.fromNamespaceAndPath("enchanted_forest", "enchanted_forest"));
 
 	public static void run(ServerLevel level, long seed) {
 		BiomeSource source = level.getChunkSource().getGenerator().getBiomeSource();
@@ -35,6 +38,21 @@ public final class WaldschattenHeadlessSurvey {
 				.anyMatch(holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN));
 		if (!present) {
 			throw new AssertionError("Waldschatten is absent from seed " + seed);
+		}
+
+		// The other empire mod that rewrites the same parameter list. 0.1.2 passed twelve
+		// surveys alone and was absent from every real world because the two claims
+		// collided; a survey that does not prove BOTH biomes land beside each other does not
+		// answer the shipping question. Asserted whenever the mod is loaded, and the run
+		// configs stage it, so "it was not there" cannot quietly turn this check off.
+		boolean besideEnchantedForest = FabricLoader.getInstance().isModLoaded("enchanted_forest");
+		if (besideEnchantedForest) {
+			boolean theirsPresent = source.possibleBiomes().stream()
+					.anyMatch(holder -> holder.is(ENCHANTED_FOREST));
+			if (!theirsPresent) {
+				throw new AssertionError("Enchanted Forest is loaded but its biome is absent from seed "
+						+ seed + " — the two parameter-list claims are colliding again");
+			}
 		}
 
 		Climate.Sampler sampler = level.getChunkSource().randomState().sampler();
@@ -51,6 +69,11 @@ public final class WaldschattenHeadlessSurvey {
 		int ours = counts.getOrDefault(WaldschattenWorldgen.WALDSCHATTEN, 0);
 		int darkForest = counts.getOrDefault(Biomes.DARK_FOREST, 0);
 		int forest = counts.getOrDefault(Biomes.FOREST, 0);
+		int theirs = counts.getOrDefault(ENCHANTED_FOREST, 0);
+		if (besideEnchantedForest && theirs == 0) {
+			throw new AssertionError("Enchanted Forest is loaded but sampled 0 of " + samples
+					+ " cells for seed " + seed + " — its claim did not land");
+		}
 		BlockPos spawn = level.getRespawnData().pos();
 		Pair<BlockPos, Holder<Biome>> nearest = level.findClosestBiome3d(
 				holder -> holder.is(WaldschattenWorldgen.WALDSCHATTEN),
@@ -111,9 +134,11 @@ public final class WaldschattenHeadlessSurvey {
 		}
 		Waldschatten.LOGGER.info(
 				"WALDSCHATTEN_HEADLESS PASS seed={} spawn={} biomes={} samples={} waldschatten={} ({}%) "
-						+ "dark_forest={} forest={} nearest={} blocks hut={} blocks relief={} blocks",
+						+ "dark_forest={} forest={} enchanted_forest={} ({}%) nearest={} blocks hut={} blocks "
+						+ "relief={} blocks",
 				seed, spawn, source.possibleBiomes().size(), samples, ours, pct(ours, samples),
-				darkForest, forest, biomeDistance, hutDistance, relief);
+				darkForest, forest, besideEnchantedForest ? theirs : -1, pct(theirs, samples),
+				biomeDistance, hutDistance, relief);
 	}
 
 	private static Cell findWaldschattenCell(BiomeSource source, Climate.Sampler sampler, BlockPos near) {

@@ -87,3 +87,83 @@ The survey world is a throwaway gametest world without Terralith. The empire ser
 Terralith, and `runTerralithSurvey` exists precisely because that is a different question;
 it was not re-run for 0.1.2. Biome presence on the live world is also a fresh-chunk
 question — the world's directories predate this release.
+
+# Waldschatten 0.1.3 verification (2026-08-22)
+
+## What was wrong with 0.1.2
+
+Jesse reported it from play: no Waldschatten in any new world, `/locate biome
+waldschatten:waldschatten` finding nothing. His client log (`logs/latest.log`, 13:41
+session) had `waldschatten 0.1.2` loaded, the biome registered (`/locate` said "could not
+find within a reasonable distance", not "unknown biome"), and at world creation:
+
+```
+Enchanted Forest claimed 176 complete birch-forest climate entries.
+```
+
+— and **no** `Waldschatten claimed …` line, and no `claimed NOTHING` warning either. The
+claim code was never entered.
+
+Both mods hooked `MultiNoiseBiomeSource.parameters()` with
+`@Inject(at = RETURN, cancellable = true)` + `setReturnValue`. Mixin emits
+`if (cancelled) return` after each callback at an injection point, so the first handler
+to cancel ends the method and every later one is skipped — silently, because the loser's
+code never runs and cannot log that it lost. Enchanted Forest's config registers first.
+It had entered `mods.json` on 2026-08-19, the same day as 0.1.2; every survey on record
+had passed because every survey ran this mod alone.
+
+## The fix, and the gate that would have caught it
+
+- Both mods now claim with MixinExtras `@ModifyReturnValue` (bundled in Fabric Loader
+  0.19.3 — no new dependency), which chains: each modifier receives the previous one's
+  output. Enchanted Forest 0.1.11 carries the matching change.
+- Every run config stages **enchanted-forest** beside vibranium (`stageDepMods` in
+  `build.gradle`), and `WaldschattenHeadlessSurvey` asserts that when the mod is loaded its
+  biome is both offered by the source *and* sampled at least once. A missing jar fails the
+  run loudly. The plain `runHeadlessSurvey` had also never staged vibranium (only the
+  Terralith variant got that fix in `fa68710`), so it could not have booted since the
+  dependency was added; it does now.
+- Survey servers bind `server-port=0`. 25565 was owned by another session's warfront dev
+  server during this battery; the survey died at bind with exit code 0 and no PASS line.
+
+## Release battery — 12/12 (local, JDK 25, combined set)
+
+Staged beside the mod: `vibranium-1.8.1`, `enchanted-forest-0.1.11` (built from its
+commit `9ea859d`), and for the Terralith rows `Terralith 2.6.4`, `lithostitched
+1.8.0+beta3`, `empire_worldgen 0.2.0`. The six seeds are `tools/jitpack-verify.sh`'s.
+Every row logged **both** `Waldschatten claimed 440/33 exact lowland slices` and
+`Enchanted Forest claimed 176/17 complete birch-forest climate entries` in the same source.
+
+| seed | stack | biomes | waldschatten | enchanted_forest | nearest | hut | relief |
+|---|---|---|---|---|---|---|---|
+| 0 | vanilla | 55 | 271 (6.41%) | 172 (4.07%) | 275 | 280 | – |
+| 1 | vanilla | 55 | 302 (7.15%) | 193 (4.57%) | 362 | 317 | – |
+| −1 | vanilla | 55 | 267 (6.32%) | 146 (3.46%) | 45 | 262 | – |
+| 8675309 | vanilla | 55 | 187 (4.43%) | 171 (4.05%) | 45 | 156 | – |
+| −160353759327030922 | vanilla | 55 | 392 (9.28%) | 185 (4.38%) | 0 | 213 | – |
+| 9223372036854775807 | vanilla | 55 | 188 (4.45%) | 106 (2.51%) | 607 | 1248 | – |
+| 0 | Terralith | 146 | 25 (0.59%) | 39 (0.92%) | 163 | 189 | 0 |
+| 1 | Terralith | 146 | 93 (2.20%) | 63 (1.49%) | 32 | 75 | 0 |
+| −1 | Terralith | 146 | 28 (0.66%) | 68 (1.61%) | 289 | 263 | 0 |
+| 8675309 | Terralith | 146 | 26 (0.62%) | 40 (0.95%) | 32 | 210 | 0 |
+| −160353759327030922 | Terralith | 146 | 48 (1.14%) | 64 (1.51%) | 45 | 374 | 0 |
+| 9223372036854775807 | Terralith | 146 | 45 (1.07%) | 22 (0.52%) | 181 | 253 | 0 |
+
+Waldschatten's own shares and distances are identical to the 0.1.1 record (vanilla
+4.43–9.28%, Terralith 0.59–2.20%), as they must be: Enchanted Forest swaps the biome on
+birch points without moving any parameter point, so it cannot shift where Waldschatten
+lands. In the last Terralith row the modifiers happened to apply in the other order
+(Enchanted Forest's claim logged first) and both still landed — order-independence
+measured, not argued.
+
+Also run, off the record seeds: vanilla 777 passed (6.39% / 3.55%, nearest 101, hut 160).
+**Terralith 777 failed the survey's spawn-distance assertion** — no Waldschatten within
+1,000 blocks of spawn — with both claims landed and both biomes present. At ~0.6% of
+cells a 1,000-block radius holds about 1.5 expected samples, so roughly one seed in five
+will miss that bar by chance on the Terralith stack; this is a property of the gate, not
+of this fix, and is left on record rather than tuned away.
+
+## Not covered
+
+- The client render battery was not rerun: nothing in 0.1.3 draws. The 0.1.2 frames stand.
+- Biome presence in the live server world is a fresh-chunk question.

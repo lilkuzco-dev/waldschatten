@@ -49,8 +49,48 @@ loom {
 	}
 }
 
-// The render battery boots a throwaway world under build/run-gametest, and build/ is
-// disposable, so the EULA acceptance has to be re-stamped on every run. (rule 9)
+// Every run config below boots a throwaway world under build/, and build/ is disposable,
+// so the EULA acceptance has to be re-stamped on every run. (rule 9)
+//
+// Dependency staging. Waldschatten hard-depends on vibranium, so no run can boot without
+// it — that is exactly how 0.1.2 came to ship against 0.1.0-era screenshots: the battery
+// stopped being possible when the dependency was added, and a battery that cannot start
+// looks the same from the outside as one nobody bothered to run.
+//
+// enchanted-forest is staged for a different reason: it is not a dependency, it is the
+// OTHER empire mod that rewrites MultiNoiseBiomeSource.parameters(). 0.1.2 was verified
+// twelve times, alone, and was absent from every real world because the two claims
+// collided and the loser was silently skipped. A survey that does not run beside the mod
+// this one actually ships beside does not answer the question being asked, so every
+// survey and the battery stage it and fail loudly if it is missing.
+//
+// Jars come from the server staging folder by default; WALDSCHATTEN_DEP_MODS overrides.
+def stageDepMods = { File modsDir, List<String> wanted ->
+	modsDir.mkdirs()
+	modsDir.listFiles()?.each { f ->
+		if (f.name.endsWith('.jar') && wanted.any { f.name.toLowerCase().startsWith(it.toLowerCase()) }) {
+			f.delete()
+		}
+	}
+	def source = System.getenv('WALDSCHATTEN_DEP_MODS')
+			?: "${System.getProperty('user.home')}/Desktop/mc-server/server-mods-staging"
+	def found = []
+	wanted.each { prefix ->
+		def jar = file(source).listFiles()?.find {
+			it.name.toLowerCase().startsWith(prefix.toLowerCase()) && it.name.endsWith('.jar')
+		}
+		if (!jar) {
+			throw new GradleException("Staging needs a ${prefix} jar in ${source} (found none); "
+					+ "set WALDSCHATTEN_DEP_MODS to a folder that has every one of ${wanted}")
+		}
+		new File(modsDir, jar.name).bytes = jar.bytes
+		found << jar.name
+	}
+	logger.lifecycle("staged into ${modsDir}: ${found}")
+}
+def SHIPPED_BESIDE = ['vibranium', 'enchanted-forest']
+def TERRAIN_STACK = ['Terralith', 'lithostitched', 'empire_worldgen']
+
 tasks.matching { it.name == 'runGametest' }.configureEach {
 	doFirst {
 		def runDir = file('build/run-gametest')
@@ -58,27 +98,7 @@ tasks.matching { it.name == 'runGametest' }.configureEach {
 		new File(runDir, 'eula.txt').text =
 				"# written by the gametest run config; build/run-gametest is disposable\n" +
 				"eula=true\n"
-
-		// Waldschatten hard-depends on vibranium, so the battery cannot boot without it and
-		// fails at mod resolution before a single frame is taken. That is exactly how 0.1.2
-		// came to ship against 0.1.0-era screenshots: the run stopped being possible when the
-		// dependency was added, and a battery that cannot start looks the same from the
-		// outside as one nobody bothered to run. Stage it the way runTerralithSurvey stages
-		// Terralith — from the server staging folder by default, overridable.
-		def modsDir = new File(runDir, 'mods')
-		modsDir.mkdirs()
-		modsDir.listFiles()?.each { if (it.name.startsWith('vibranium') && it.name.endsWith('.jar')) it.delete() }
-		def source = System.getenv('WALDSCHATTEN_DEP_MODS')
-				?: "${System.getProperty('user.home')}/Desktop/mc-server/server-mods-staging"
-		def vibranium = file(source).listFiles()?.find {
-			it.name.toLowerCase().startsWith('vibranium') && it.name.endsWith('.jar')
-		}
-		if (!vibranium) {
-			throw new GradleException("The render battery needs a vibranium jar in ${source} "
-					+ "(waldschatten depends on vibranium >=1.8.1); set WALDSCHATTEN_DEP_MODS to a folder that has one")
-		}
-		new File(modsDir, vibranium.name).bytes = vibranium.bytes
-		logger.lifecycle("render battery: staged ${vibranium.name}")
+		stageDepMods(new File(runDir, 'mods'), SHIPPED_BESIDE)
 	}
 }
 
@@ -90,63 +110,30 @@ tasks.matching { it.name in ['runHeadlessSurvey', 'runHeadlessTerralithSurvey'] 
 		delete new File(runDir, 'world')
 		runDir.mkdirs()
 		new File(runDir, 'eula.txt').text = "# throwaway headless release survey\neula=true\n"
-			new File(runDir, 'server.properties').text =
-					"online-mode=false\n" +
-					"generate-structures=true\n" +
-					"max-tick-time=-1\n" +
-					"level-seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}\n" +
+		// server-port=0: nobody connects to a survey server, and binding 25565 collides with
+		// whatever else is running on this machine — measured 2026-08-22, when a warfront dev
+		// server owned the port and the survey died at bind with exit code 0 and no PASS line.
+		new File(runDir, 'server.properties').text =
+				"online-mode=false\n" +
+				"server-port=0\n" +
+				"generate-structures=true\n" +
+				"max-tick-time=-1\n" +
+				"level-seed=${System.getenv('WALDSCHATTEN_SURVEY_SEED') ?: '0'}\n" +
 				"level-name=world\n"
+		stageDepMods(new File(runDir, 'mods'),
+				it.name == 'runHeadlessSurvey' ? SHIPPED_BESIDE : SHIPPED_BESIDE + TERRAIN_STACK)
 	}
 }
 
-tasks.matching { it.name == 'runHeadlessTerralithSurvey' }.configureEach {
-	doFirst {
-		def modsDir = file('build/run-headless-terralith/mods')
-		modsDir.mkdirs()
-		def source = System.getenv('WALDSCHATTEN_TERRALITH_MODS')
-		if (!source) {
-			throw new GradleException('runHeadlessTerralithSurvey requires WALDSCHATTEN_TERRALITH_MODS')
-		}
-		def wanted = ['Terralith', 'lithostitched', 'empire_worldgen', 'vibranium']
-		def found = []
-		file(source).listFiles()?.each { f ->
-			if (f.name.endsWith('.jar') && wanted.any { f.name.toLowerCase().startsWith(it.toLowerCase()) }) {
-				new File(modsDir, f.name).bytes = f.bytes
-				found << f.name
-			}
-		}
-		if (found.size() < 4) {
-			throw new GradleException("Headless Terralith survey found only ${found} in ${source} "
-					+ "(needs Terralith, lithostitched, empire_worldgen and vibranium)")
-		}
-	}
-}
-
-// Stages Terralith + lithostitched into the survey run's mods folder. They are not a build
-// dependency and are never shipped — this only exists so the Terralith question can be
-// answered by measurement. Point WALDSCHATTEN_TERRALITH_MODS at any folder holding them.
+// The same worldgen survey, but with Terralith and lithostitched dropped in beside us. They
+// are not a build dependency and are never shipped — this only exists so the Terralith
+// question can be answered by measurement.
 tasks.matching { it.name == 'runTerralithSurvey' }.configureEach {
 	doFirst {
 		def runDir = file('build/run-terralith')
 		runDir.mkdirs()
 		new File(runDir, 'eula.txt').text = "# throwaway survey world\neula=true\n"
-		def modsDir = new File(runDir, 'mods')
-		modsDir.mkdirs()
-		def source = System.getenv('WALDSCHATTEN_TERRALITH_MODS')
-				?: "${System.getProperty('user.home')}/Desktop/mc-server/server-mods-staging"
-		def wanted = ['Terralith', 'lithostitched']
-		def found = []
-		file(source).listFiles()?.each { f ->
-			if (f.name.endsWith('.jar') && wanted.any { f.name.toLowerCase().startsWith(it.toLowerCase()) }) {
-				new File(modsDir, f.name).bytes = f.bytes
-				found << f.name
-			}
-		}
-		if (found.size() < 2) {
-			throw new GradleException("Terralith survey needs Terralith and lithostitched jars in ${source} "
-					+ "(found ${found}); set WALDSCHATTEN_TERRALITH_MODS to a folder that has them")
-		}
-		logger.lifecycle("Terralith survey: staged ${found}")
+		stageDepMods(new File(runDir, 'mods'), SHIPPED_BESIDE + TERRAIN_STACK)
 	}
 }
 
