@@ -3,7 +3,17 @@
   "config": {
     "default": {
       "feature": "waldschatten:twisted_tree",
-      "placement": []
+      "placement": [
+        {
+          "type": "minecraft:block_predicate_filter",
+          "predicate": {
+            "type": "minecraft:would_survive",
+            "state": {
+              "Name": "waldschatten:twisted_sapling"
+            }
+          }
+        }
+      ]
     },
     "features": [
       {
@@ -24,7 +34,17 @@
         "chance": 0.3,
         "feature": {
           "feature": "waldschatten:twisted_tree_small",
-          "placement": []
+          "placement": [
+            {
+              "type": "minecraft:block_predicate_filter",
+              "predicate": {
+                "type": "minecraft:would_survive",
+                "state": {
+                  "Name": "waldschatten:twisted_sapling"
+                }
+              }
+            }
+          ]
         }
       }
     ]

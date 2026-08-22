@@ -148,14 +148,31 @@ configured.fallen_twisted_log = {
 // the selector that caused it.
 const inline = (id) => ({ feature: id, placement: [] });
 
+// A tree entry must be CHECKED, never bare. Vanilla's selectors name `oak_checked` and
+// friends — placed features whose only modifier is `would_survive <sapling>` — and that
+// filter is the only thing standing between "a tree" and "a tree on top of a tree".
+// The biome-level placement lands on OCEAN_FLOOR, which leaves and logs both count as,
+// and the tree feature itself plants dirt under whatever it is given. Shipped bare in
+// 0.1.0–0.1.3: sixteen attempts per chunk stacked into towers, measured in a live world
+// at 83 blocks of twisted_log over 72 of ground, with dirt at y=148 — and Jesse's report
+// of trees past 300. The sapling is our own, so the rule is exactly "where a player could
+// plant one": dirt-family ground, never a roof, never a canopy.
+const checked = (id) => ({
+	feature: id,
+	placement: [{
+		type: "minecraft:block_predicate_filter",
+		predicate: { type: "minecraft:would_survive", state: state(`${NS}:twisted_sapling`) },
+	}],
+});
+
 configured.twisted_forest_vegetation = {
 	type: "minecraft:random_selector",
 	config: {
-		default: inline(`${NS}:twisted_tree`),
+		default: checked(`${NS}:twisted_tree`),
 		features: [
 			{ chance: 0.03, feature: inline("minecraft:huge_brown_mushroom") },
 			{ chance: 0.02, feature: inline("minecraft:huge_red_mushroom") },
-			{ chance: 0.30, feature: inline(`${NS}:twisted_tree_small`) },
+			{ chance: 0.30, feature: checked(`${NS}:twisted_tree_small`) },
 		],
 	},
 };

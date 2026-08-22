@@ -167,3 +167,75 @@ of this fix, and is left on record rather than tuned away.
 
 - The client render battery was not rerun: nothing in 0.1.3 draws. The 0.1.2 frames stand.
 - Biome presence in the live server world is a fresh-chunk question.
+
+# Waldschatten 0.1.4 verification (2026-08-22)
+
+## The report, and what the world said
+
+Jesse: the witch hut "filled with wood", "trees way way too high, some surpass 300 blocks".
+His current world, censused from the 26.2 `dimensions/minecraft/overworld/region` files
+(`census.js`, 16,479 chunks): **105,120 `waldschatten:twisted_log` and 2,052,873
+`twisted_leaves` above y=150, the highest at y=319** — the build ceiling — and
+`minecraft:dirt` at y=148 inside the hut's footprint, with 399 twisted logs in a 32×32 box
+whose template holds 28.
+
+Cause: `twisted_forest_vegetation`'s `random_selector` named its trees as bare
+`{feature, placement: []}`. Vanilla's selectors name `oak_checked`-style placed features
+whose one modifier is `would_survive <sapling>`. Without it, the biome-level `count 16` on
+an `OCEAN_FLOOR` heightmap (leaves and logs block motion, so they *are* the floor) lands
+attempts on canopies, and `TreeFeature` plants dirt under the trunk wherever it is — so the
+next attempt finds dirt and plants again. Towers.
+
+## The fix, and the gate that would have caught it
+
+- `tools/gen-worldgen.js` gains `checked(id)`: every tree entry in the selector carries
+  `block_predicate_filter` → `would_survive waldschatten:twisted_sapling`. Regenerated; the
+  generator's cross-check still passes.
+- The headless survey generates the 25 chunks around the nearest Waldschatten cell and
+  asserts the tallest `twisted_log` column span is ≤ 32 (one tree is ≤ 15 of trunk plus
+  branch steps; a neighbour's branch reaching into the column measured 17–18; stacking is
+  all-or-nothing across 400 attempts and measures 80+).
+- **Found on the way — the relief probe had never measured anything.** It queried heights
+  on chunks it had not generated; 26.2 answers those from an empty placeholder at the
+  world floor, so every column read −64, relief 0, and "all six seeds flat" was never
+  true. `groundHeight` now generates the chunk and reads ground through logs and leaves.
+  Honest values on the six seeds: 0, 0, 14, 17, 29, 36 blocks over ~64 connected chunk
+  centres — gently rolling, as the erosion slice promises — so the bar moves from the
+  uncalibrated 24 to 48. A mountain reads 100+.
+
+## Release battery — 12/12, one jar, combined set
+
+Staged beside the mod as for 0.1.3 (vibranium 1.8.1, enchanted-forest 0.1.11; Terralith
+rows add Terralith 2.6.4, lithostitched, empire_worldgen 0.2.0).
+
+| seed | stack | waldschatten | enchanted_forest | tallest log column | relief |
+|---|---|---|---|---|---|
+| 0 | vanilla | 271 (6.41%) | 172 (4.07%) | 17 | – |
+| 1 | vanilla | 302 (7.15%) | 193 (4.57%) | 15 | – |
+| −1 | vanilla | 267 (6.32%) | 146 (3.46%) | 18 | – |
+| 8675309 | vanilla | 187 (4.43%) | 171 (4.05%) | 15 | – |
+| −160353759327030922 | vanilla | 392 (9.28%) | 185 (4.38%) | 15 | – |
+| 9223372036854775807 | vanilla | 188 (4.45%) | 106 (2.51%) | 15 | – |
+| 0 | Terralith | 25 (0.59%) | 39 (0.92%) | 15 | 14 |
+| 1 | Terralith | 93 (2.20%) | 63 (1.49%) | 17 | 0 |
+| −1 | Terralith | 28 (0.66%) | 68 (1.61%) | 15 | 0 |
+| 8675309 | Terralith | 26 (0.62%) | 40 (0.95%) | 14 | 36 |
+| −160353759327030922 | Terralith | 48 (1.14%) | 64 (1.51%) | 15 | 29 |
+| 9223372036854775807 | Terralith | 45 (1.07%) | 22 (0.52%) | 15 | 17 |
+
+Biome shares, spawn distances and hut distances are unchanged from 0.1.3 (a placement
+filter on trees cannot move a biome). Survey servers bind `server-port=0` since 0.1.3.
+
+## The hut, for the record
+
+The hut was also pasted over by a warfront `aegis_town` (206 stripped birch logs and 174
+stone bricks in its box, none in the template; its own dark-oak planks down to 27 of 84)
+and footed by warfront's `SiteFoundations`. Both are fixed in **warfront 0.4.20**: footing
+is per piece from the piece's own bottom row, and bases/castles keep clear of
+`waldschatten:witch_huts` (and bases of `set_pieces`) via `avoid_sets`. See
+`warfront/VERIFY.md`.
+
+## Not covered
+
+- Render battery not rerun: nothing drawn changes. Existing worlds keep their towers —
+  only fresh chunks get the checked placement.

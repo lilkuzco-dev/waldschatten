@@ -271,9 +271,14 @@ such boundary; concave patches can have more than one.
 The 0.1.1 release gate ran seeds `0`, `1`, `-1`, `8675309`, the previous live-server seed,
 and `Long.MAX_VALUE` on both stacks. The live-stack run includes Empire Worldgen and walks
 the connected Waldschatten patch from the nearest match, asking the real heightmap for up to
-64 chunk centres. It rejects more than 24 blocks of relief; all six release worlds measured
-zero. This is a reproducible survey, not a mathematical promise over every possible seed, so
-the runtime rule is paired with the six-seed regression gate.
+64 chunk centres. It rejects more than 48 blocks of relief. Until 0.1.4 the bar was 24 and
+every seed on record measured exactly 0 — because the probe queried heights on chunks it had
+never generated, and 26.2 answers those from an empty placeholder at the world floor. The
+probe now generates each chunk and reads ground through the trees; the six release seeds
+honestly measure 0, 0, 14, 17, 29 and 36 blocks, which is the gently rolling ground the
+erosion slice promises (a mountain reads 100+). This is a reproducible survey, not a
+mathematical promise over every possible seed, so the runtime rule is paired with the
+six-seed regression gate.
 
 Every run config stages its neighbours from `~/Desktop/mc-server/server-mods-staging` by
 default; set `WALDSCHATTEN_DEP_MODS` to any folder holding them. The battery and the plain
